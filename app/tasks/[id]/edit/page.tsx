@@ -1,10 +1,16 @@
+"use client";
+
+import { useParams } from "next/navigation";
 import TaskEditClient from "@/components/tasks/TaskEditClient";
 
-interface TaskEditPageProps {
-  params: { id: string };
-}
+export default function TaskEditPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
 
-export default function TaskEditPage({ params }: TaskEditPageProps) {
+  if (!id) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -15,7 +21,7 @@ export default function TaskEditPage({ params }: TaskEditPageProps) {
         </p>
       </div>
 
-      <TaskEditClient taskId={params.id} />
+      <TaskEditClient taskId={id} />
     </div>
   );
 }

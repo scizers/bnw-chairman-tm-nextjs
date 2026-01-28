@@ -1,11 +1,23 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
 
-export default function AppLayout({
-  children
-}: {
+interface AppShellProps {
   children: React.ReactNode;
-}) {
+}
+
+const AUTH_ROUTES = new Set(["/login"]);
+
+export default function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
+  const isAuthRoute = AUTH_ROUTES.has(pathname);
+
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen bg-surface-base">
       <Sidebar />

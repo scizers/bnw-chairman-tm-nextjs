@@ -6,13 +6,32 @@ interface KpiCardProps {
   value: string | number;
   trend?: number;
   hint?: string;
+  onClick?: () => void;
+  active?: boolean;
 }
 
-export default function KpiCard({ title, value, trend, hint }: KpiCardProps) {
+export default function KpiCard({
+  title,
+  value,
+  trend,
+  hint,
+  onClick,
+  active
+}: KpiCardProps) {
   const trendPositive = typeof trend === "number" && trend >= 0;
+  const Wrapper = onClick ? "button" : "div";
 
   return (
-    <div className="rounded-xl bg-surface-card p-5 shadow-card">
+    <Wrapper
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      aria-pressed={onClick ? active : undefined}
+      className={clsx(
+        "rounded-xl bg-surface-card p-5 text-left shadow-card",
+        onClick ? "cursor-pointer transition hover:bg-surface-card/80" : "",
+        active ? "ring-1 ring-brand-primary/50" : ""
+      )}
+    >
       <p className="text-xs uppercase tracking-[0.3em] text-text-muted">{title}</p>
       <div className="mt-4 flex items-end justify-between">
         <div>
@@ -33,6 +52,6 @@ export default function KpiCard({ title, value, trend, hint }: KpiCardProps) {
           </div>
         ) : null}
       </div>
-    </div>
+    </Wrapper>
   );
 }

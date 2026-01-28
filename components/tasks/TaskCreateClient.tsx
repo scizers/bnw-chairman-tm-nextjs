@@ -5,44 +5,23 @@ import { useRouter } from "next/navigation";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import { tasksApi, teamMembersApi } from "@/lib/api";
-import type { Task } from "@/types/task";
 import type { TeamMember } from "@/types/team";
-import { normalizeTasks } from "@/lib/utils/task";
 
-interface TaskEditClientProps {
-  taskId: string;
-}
+const getDefaultDueDate = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
-export default function TaskEditClient({ taskId }: TaskEditClientProps) {
+export default function TaskCreateClient() {
   const router = useRouter();
-  const [task, setTask] = useState<Task | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [tasksData, teamData] = await Promise.all([
-        tasksApi.list(),
-        teamMembersApi.list()
-      ]);
-      const normalized = normalizeTasks(tasksData ?? []);
-      const selected = normalized.find((item) => item.id === taskId || item._id === taskId) ?? null;
-      setTask(selected);
-      setTeamMembers(teamData ?? []);
-    } catch (err) {
-      setError("Unable to load task details.");
-    } finally {
-      setLoading(false);
-    }
-  }, [taskId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const [form, setForm] = useState({
     title: "",
@@ -50,39 +29,52 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
     assignedTo: "",
     status: "open",
     priority: "low",
-    dueDate: ""
+    dueDate: getDefaultDueDate()
   });
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const teamData = await teamMembersApi.list();
+      setTeamMembers(teamData ?? []);
+    } catch (err) {
+      setError("Unable to load team members.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (!task) return;
-    setForm({
-      title: task.title || "",
-      description: task.description || "",
-      assignedTo: task.assignedTo || "",
-      status: task.status || "open",
-      priority: task.priority || "low",
-      dueDate: task.dueDate ? task.dueDate.slice(0, 10) : ""
-    });
-  }, [task]);
+    void load();
+  }, [load]);
 
-  const canSubmit = useMemo(() => form.title.trim().length > 0, [form.title]);
+  const canSubmit = useMemo(() => {
+    return (
+      form.title.trim().length > 0 &&
+      form.assignedTo.trim().length > 0 &&
+      form.status.trim().length > 0 &&
+      form.dueDate.trim().length > 0
+    );
+  }, [form]);
 
-  const handleSave = async () => {
-    if (!task) return;
+  const handleCreate = async () => {
+    if (!canSubmit) return;
     setSaving(true);
     setError(null);
     try {
-      await tasksApi.update(task.id ?? taskId, {
-        title: form.title,
-        description: form.description,
-        assignedTo: form.assignedTo || undefined,
+      const created = await tasksApi.create({
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        assignedTo: form.assignedTo,
         status: form.status,
         priority: form.priority,
-        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined
+        dueDate: new Date(form.dueDate).toISOString()
       });
-      router.push(`/tasks/${task.id ?? taskId}`);
+      const id = created?.id ?? created?._id;
+      router.push(id ? `/tasks/${id}` : "/tasks");
     } catch (err) {
-      setError("Failed to update task. Please try again.");
+      setError("Failed to create task. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -97,32 +89,30 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
   }
 
   if (error) {
-    return <ErrorState title="Unable to edit task" description={error} onRetry={load} />;
-  }
-
-  if (!task) {
-    return <ErrorState title="Task not found" description="Return to the task list." />;
+    return <ErrorState title="Unable to create task" description={error} onRetry={load} />;
   }
 
   return (
     <div className="rounded-xl bg-surface-card p-6 shadow-card">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Title</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Task Name</label>
           <input
             value={form.title}
             onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
             className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+            required
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Assignee</label>
           <select
             value={form.assignedTo}
             onChange={(event) => setForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
             className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+            required
           >
-            <option value="">Unassigned</option>
+            <option value="">Select assignee</option>
             {teamMembers.map((member, index) => {
               const value =
                 member.id ?? member._id ?? member.email ?? member.name ?? String(index);
@@ -140,6 +130,7 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
             value={form.status}
             onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))}
             className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+            required
           >
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
@@ -170,6 +161,7 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
             value={form.dueDate}
             onChange={(event) => setForm((prev) => ({ ...prev, dueDate: event.target.value }))}
             className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+            required
           />
         </div>
         <div className="md:col-span-2">
@@ -178,6 +170,7 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
             value={form.description}
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
             className="mt-2 min-h-[140px] w-full rounded-xl border border-border-subtle bg-surface-muted p-3 text-sm text-text-primary"
+            placeholder="Optional description"
           />
         </div>
       </div>
@@ -193,10 +186,10 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
         <button
           type="button"
           disabled={!canSubmit || saving}
-          onClick={handleSave}
+          onClick={handleCreate}
           className="rounded-full bg-brand-primary px-5 py-2 text-xs font-semibold text-black disabled:opacity-60"
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Creating..." : "Create Task"}
         </button>
       </div>
     </div>

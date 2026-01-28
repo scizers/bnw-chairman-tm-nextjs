@@ -39,8 +39,11 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
       <h3 className="font-display text-lg text-text-primary">Remarks Timeline</h3>
       <div className="mt-4 space-y-4">
         {remarks.length ? (
-          remarks.map((remark) => (
-            <div key={remark.id} className="rounded-xl border border-border-subtle bg-surface-muted p-4">
+          remarks.map((remark, index) => (
+            <div
+              key={remark.id ?? remark.createdAt ?? `remark-${index}`}
+              className="rounded-xl border border-border-subtle bg-surface-muted p-4"
+            >
               <p className="text-sm text-text-primary">{remark.text}</p>
               <p className="mt-2 text-xs text-text-muted">
                 {formatDate(remark.createdAt)}

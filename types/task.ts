@@ -7,7 +7,7 @@ export type TaskStatus =
   | "critical"
   | string;
 
-export type TaskPriority = "low" | "medium" | "high" | "critical" | string;
+export type TaskPriority = "low" | "normal" | "medium" | "high" | "critical" | string;
 
 export interface Task {
   id?: string;

@@ -18,8 +18,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const response = await authApi.login({ email, password });
-      const token =
-        response?.token || response?.user?.id || response?.user?._id;
+      const token = response?.token;
       if (!token) {
         throw new Error("Token missing from response.");
       }

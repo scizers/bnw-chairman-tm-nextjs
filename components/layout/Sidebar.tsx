@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListTodo, Users, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, ListTodo, Users, Settings } from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/team", label: "Team", icon: Users },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 
@@ -18,10 +17,10 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-surface-card border-r border-border-subtle px-6 py-8">
-      <div className="mb-10">
+      <Link href="/dashboard" className="mb-10 block hover:opacity-90">
         <p className="text-sm uppercase tracking-[0.3em] text-text-muted">Chairman Office</p>
         <h1 className="font-display text-2xl text-text-primary mt-2">Executive Desk</h1>
-      </div>
+      </Link>
       <nav className="flex flex-col gap-3">
         {navItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
