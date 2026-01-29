@@ -1,11 +1,16 @@
+"use client";
+
+import { useParams } from "next/navigation";
 import TaskEditClient from "@/components/tasks/TaskEditClient";
 
-interface TaskEditPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function TaskEditPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
 
-export default async function TaskEditPage({ params }: TaskEditPageProps) {
-  const { id } = await params;
+  if (!id) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       <div>

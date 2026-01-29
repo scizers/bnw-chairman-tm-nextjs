@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { clientApi } from "@/lib/api/client";
 import type { Task } from "@/types/task";
 import type { TeamMember } from "@/types/team";
+import { normalizeTasks, resolveTeamMemberId } from "@/lib/utils/task";
 
 interface SearchDataset {
   tasks: Task[];
@@ -39,7 +40,10 @@ export default function GlobalSearch() {
         clientApi.get<Task[]>("/tasks"),
         clientApi.get<TeamMember[]>("/team-members")
       ]);
-      setDataset({ tasks: tasksRes.data ?? [], team: teamRes.data ?? [] });
+      setDataset({
+        tasks: normalizeTasks(tasksRes.data ?? []),
+        team: teamRes.data ?? []
+      });
     } catch (err) {
       setError("Unable to load global search data.");
     } finally {
@@ -102,10 +106,10 @@ export default function GlobalSearch() {
                 <div className="mb-4">
                   <p className="mb-2 text-xs uppercase tracking-[0.2em] text-text-muted">Tasks</p>
                   <div className="space-y-2">
-                    {results.tasks.slice(0, 5).map((task) => (
+                    {results.tasks.slice(0, 5).map((task, index) => (
                       <Link
-                        key={task.id}
-                        href={`/tasks/${task.id}`}
+                        key={task.id ?? task._id ?? `${task.title}-${index}`}
+                        href={`/tasks/${task.id ?? task._id}`}
                         className="block rounded-lg border border-border-subtle px-3 py-2 text-sm text-text-primary hover:bg-white/5"
                       >
                         <p className="font-semibold">{task.title}</p>
@@ -119,16 +123,19 @@ export default function GlobalSearch() {
                 <div>
                   <p className="mb-2 text-xs uppercase tracking-[0.2em] text-text-muted">Team</p>
                   <div className="space-y-2">
-                    {results.team.slice(0, 5).map((member) => (
+                    {results.team.slice(0, 5).map((member, index) => {
+                      const memberId = resolveTeamMemberId(member);
+                      return (
                       <Link
-                        key={member.id}
-                        href={`/team/${member.id}`}
+                        key={memberId || member.email || `${member.name}-${index}`}
+                        href={`/team/${memberId}`}
                         className="block rounded-lg border border-border-subtle px-3 py-2 text-sm text-text-primary hover:bg-white/5"
                       >
                         <p className="font-semibold">{member.name}</p>
                         <p className="text-xs text-text-muted">{member.designation || "Team Member"}</p>
                       </Link>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               ) : null}

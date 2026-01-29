@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Manrope, Playfair_Display } from "next/font/google";
+import "antd/dist/reset.css";
 import "./globals.css";
+import AntdProvider from "@/components/providers/AntdProvider";
+import AppShell from "@/components/layout/AppShell";
 
 const display = Playfair_Display({
   subsets: ["latin"],
@@ -26,7 +29,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <AntdProvider>
+          <AppShell>{children}</AppShell>
+        </AntdProvider>
+      </body>
     </html>
   );
 }

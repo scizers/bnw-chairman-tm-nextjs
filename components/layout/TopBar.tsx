@@ -18,7 +18,7 @@ export default function TopBar() {
       </div>
       <div className="flex items-center gap-3">
         <Link
-          href="/tasks"
+          href="/tasks/new"
           className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-black shadow-soft transition hover:brightness-110"
         >
           <PlusCircle size={18} />

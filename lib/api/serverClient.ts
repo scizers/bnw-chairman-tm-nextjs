@@ -12,7 +12,7 @@ export const createServerApi = async () => {
     baseURL,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { "x-user-id": token } : {})
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     }
   });
 };

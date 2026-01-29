@@ -6,6 +6,10 @@ export const teamMembersApi = {
     const { data } = await clientApi.get<TeamMember[]>("/team-members");
     return data;
   },
+  getById: async (teamMemberId: string) => {
+    const { data } = await clientApi.get<TeamMember>(`/team-members/${teamMemberId}`);
+    return data;
+  },
   create: async (payload: Partial<TeamMember>) => {
     const { data } = await clientApi.post<TeamMember>("/team-members", payload);
     return data;

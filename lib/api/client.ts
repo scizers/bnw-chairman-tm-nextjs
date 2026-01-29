@@ -14,7 +14,7 @@ clientApi.interceptors.request.use((config) => {
     const token = window.localStorage.getItem("auth_token");
     if (token) {
       config.headers = config.headers ?? {};
-      config.headers["x-user-id"] = token;
+      config.headers.Authorization = `Bearer ${token}`;
     }
   }
   return config;
