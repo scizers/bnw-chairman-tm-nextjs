@@ -9,11 +9,11 @@ import { formatDate } from "@/lib/utils/format";
 import { attachAssigneeNames, normalizeTasks, resolveTeamMemberId } from "@/lib/utils/task";
 
 interface TaskDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
-  const { id } = params;
+  const { id } = await params;
   let task = undefined;
   let remarks: Remark[] = [];
 

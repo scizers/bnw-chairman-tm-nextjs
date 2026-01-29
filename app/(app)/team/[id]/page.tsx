@@ -8,11 +8,11 @@ import type { TeamMember } from "@/types/team";
 import { formatRelative } from "@/lib/utils/format";
 
 interface AgentProfilePageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function AgentProfilePage({ params }: AgentProfilePageProps) {
-  const { id } = params;
+  const { id } = await params;
   let member: TeamMember | undefined;
   let tasks: Task[] = [];
 

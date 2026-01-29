@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { tasksApi } from "@/lib/api";
 import type { Remark } from "@/types/remark";
-import { formatDate } from "@/lib/utils/format";
+import { formatDateTime } from "@/lib/utils/format";
+import { getAuthProfile } from "@/lib/auth/token";
 
 interface TaskRemarksClientProps {
   taskId: string;
@@ -14,6 +15,11 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<{ id?: string; name?: string }>({});
+
+  useEffect(() => {
+    setProfile(getAuthProfile());
+  }, []);
 
   const handleAddRemark = async () => {
     if (!text.trim()) return;
@@ -21,9 +27,11 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
     try {
       const response = await tasksApi.addRemark(taskId, text.trim());
       const newRemark: Remark = {
-        id: response?.id,
+        id: response?.id ?? response?._id,
         text: text.trim(),
-        createdAt: new Date().toISOString()
+        createdAt: response?.createdAt ?? new Date().toISOString(),
+        author: profile.id,
+        authorName: profile.name
       };
       setRemarks((prev) => [newRemark, ...prev]);
       setText("");
@@ -39,14 +47,26 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
       <h3 className="font-display text-lg text-text-primary">Remarks Timeline</h3>
       <div className="mt-4 space-y-4">
         {remarks.length ? (
-          remarks.map((remark) => (
-            <div key={remark.id} className="rounded-xl border border-border-subtle bg-surface-muted p-4">
-              <p className="text-sm text-text-primary">{remark.text}</p>
-              <p className="mt-2 text-xs text-text-muted">
-                {formatDate(remark.createdAt)}
-              </p>
-            </div>
-          ))
+          remarks.map((remark, index) => {
+            const authorId = remark.author || remark.createdBy;
+            const isCurrentUser = authorId && profile.id === authorId;
+            const authorName =
+              remark.authorName ||
+              (isCurrentUser ? profile.name || "You" : undefined) ||
+              (authorId ? "Executive Staff" : "Unknown");
+            return (
+              <div
+                key={remark.id ?? remark._id ?? index}
+                className="rounded-xl border border-border-subtle bg-surface-muted p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
+                  <span className="font-semibold text-text-primary">{authorName}</span>
+                  <span>{formatDateTime(remark.createdAt)}</span>
+                </div>
+                <p className="mt-3 text-sm text-text-primary">{remark.text}</p>
+              </div>
+            );
+          })
         ) : (
           <p className="text-sm text-text-muted">No remarks yet.</p>
         )}

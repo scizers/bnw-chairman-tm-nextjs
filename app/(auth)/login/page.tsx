@@ -23,7 +23,7 @@ export default function LoginPage() {
       if (!token) {
         throw new Error("Token missing from response.");
       }
-      persistAuthToken(token);
+      persistAuthToken(token, response?.user);
       router.push("/dashboard");
     } catch (err) {
       setError("Login failed. Please verify your credentials.");

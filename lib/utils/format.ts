@@ -19,3 +19,16 @@ export const formatRelative = (value?: string) => {
   if (days === 1) return "1 day ago";
   return `${days} days ago`;
 };
+
+export const formatDateTime = (value?: string) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+};
