@@ -76,17 +76,23 @@ export default function TeamMemberTasksTable({
     },
     {
       key: "updatedAt",
-      title: "Last Updated",
+      title: "Last Remark",
       sorter: true,
       sortOrder: sortBy === "updatedAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
-      render: (row: Task) =>
-        row.lastRemark
-          ? row.lastRemark
-          : row.lastRemarkAt
-            ? formatRelative(row.lastRemarkAt)
-            : row.updatedAt
-              ? formatRelative(row.updatedAt)
-              : "—"
+      render: (row: Task) => {
+        const remark = row.lastRemark?.trim();
+        const timestamp = row.lastRemarkAt ?? row.updatedAt;
+        const timeLabel = timestamp ? formatRelative(timestamp) : null;
+        if (!remark) {
+          return timeLabel ?? "—";
+        }
+        return (
+          <div>
+            <p className="text-sm text-text-primary">{remark}</p>
+            {timeLabel ? <p className="text-xs text-text-muted">{timeLabel}</p> : null}
+          </div>
+        );
+      }
     },
     {
       key: "actions",
