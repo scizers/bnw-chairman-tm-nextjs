@@ -9,11 +9,9 @@ import ErrorState from "@/components/common/ErrorState";
 const defaultForm: MomFormState = {
   title: "",
   meetingDate: "",
-  attendees: "",
+  attendees: [],
   rawNotes: "",
-  attachments: "",
-  aiSummary: "",
-  aiExtractedAt: "",
+  attachments: [],
 };
 
 export default function MomCreateClient() {

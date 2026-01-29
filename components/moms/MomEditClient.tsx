@@ -15,11 +15,15 @@ interface MomEditClientProps {
 const mapMomToForm = (mom: Mom): MomFormState => ({
   title: mom.title || "",
   meetingDate: mom.meetingDate ? mom.meetingDate.slice(0, 10) : "",
-  attendees: mom.attendees?.join("\n") || "",
+  attendees: mom.attendees || [],
   rawNotes: mom.rawNotes || "",
-  attachments: mom.attachments?.map((item) => item.fileUrl).join("\n") || "",
-  aiSummary: mom.aiSummary || "",
-  aiExtractedAt: mom.aiExtractedAt ? mom.aiExtractedAt.slice(0, 10) : "",
+  attachments:
+    mom.attachments?.map((item, index) => ({
+      uid: `${index}-${item.fileUrl}`,
+      name: item.fileUrl.split("/").pop() || `Attachment ${index + 1}`,
+      status: "done",
+      url: item.fileUrl,
+    })) || [],
 });
 
 export default function MomEditClient({ momId }: MomEditClientProps) {

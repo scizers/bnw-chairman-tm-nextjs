@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import { Select, Upload } from "antd";
+import type { UploadFile } from "antd/es/upload/interface";
 import type { Mom } from "@/types/mom";
 
 interface MomFormProps {
@@ -15,27 +17,20 @@ interface MomFormProps {
 export interface MomFormState {
   title: string;
   meetingDate: string;
-  attendees: string;
+  attendees: string[];
   rawNotes: string;
-  attachments: string;
-  aiSummary: string;
-  aiExtractedAt: string;
+  attachments: UploadFile[];
 }
-
-const splitLines = (value: string) =>
-  value
-    .split(/\n|,/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 
 export const buildMomPayload = (state: MomFormState): Partial<Mom> => ({
   title: state.title.trim(),
   meetingDate: state.meetingDate ? new Date(state.meetingDate).toISOString() : undefined,
-  attendees: splitLines(state.attendees),
+  attendees: state.attendees.map((entry) => entry.trim()).filter(Boolean),
   rawNotes: state.rawNotes.trim(),
-  attachments: splitLines(state.attachments).map((fileUrl) => ({ fileUrl })),
-  aiSummary: state.aiSummary.trim() || undefined,
-  aiExtractedAt: state.aiExtractedAt ? new Date(state.aiExtractedAt).toISOString() : undefined,
+  attachments: state.attachments
+    .map((file) => file.url || file.thumbUrl || null)
+    .filter((fileUrl): fileUrl is string => Boolean(fileUrl))
+    .map((fileUrl) => ({ fileUrl })),
 });
 
 export default function MomForm({
@@ -52,6 +47,23 @@ export default function MomForm({
 
   const handleChange = (key: keyof MomFormState, nextValue: string) => {
     onChange({ ...value, [key]: nextValue });
+  };
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = typeof reader.result === "string" ? reader.result : "";
+      if (!url) return;
+      const next: UploadFile = {
+        uid: `${Date.now()}-${file.name}`,
+        name: file.name,
+        status: "done",
+        url,
+      };
+      onChange({ ...value, attachments: [...value.attachments, next] });
+    };
+    reader.readAsDataURL(file);
+    return false;
   };
 
   return (
@@ -78,11 +90,12 @@ export default function MomForm({
         </div>
         <div className="md:col-span-2">
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Attendees</label>
-          <textarea
+          <Select
+            mode="tags"
             value={value.attendees}
-            onChange={(event) => handleChange("attendees", event.target.value)}
-            className="mt-2 min-h-[90px] w-full rounded-xl border border-border-subtle bg-surface-muted p-3 text-sm text-text-primary"
-            placeholder="Add names, one per line or comma separated"
+            onChange={(next) => onChange({ ...value, attendees: next })}
+            placeholder="Add names"
+            className="mt-2 w-full"
           />
         </div>
         <div className="md:col-span-2">
@@ -97,30 +110,24 @@ export default function MomForm({
         </div>
         <div className="md:col-span-2">
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Attachments</label>
-          <textarea
-            value={value.attachments}
-            onChange={(event) => handleChange("attachments", event.target.value)}
-            className="mt-2 min-h-[90px] w-full rounded-xl border border-border-subtle bg-surface-muted p-3 text-sm text-text-primary"
-            placeholder="Paste file URLs, one per line"
-          />
-        </div>
-        <div className="md:col-span-2">
-          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">AI Summary</label>
-          <textarea
-            value={value.aiSummary}
-            onChange={(event) => handleChange("aiSummary", event.target.value)}
-            className="mt-2 min-h-[90px] w-full rounded-xl border border-border-subtle bg-surface-muted p-3 text-sm text-text-primary"
-            placeholder="Optional summary"
-          />
-        </div>
-        <div>
-          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">AI Extracted At</label>
-          <input
-            type="date"
-            value={value.aiExtractedAt}
-            onChange={(event) => handleChange("aiExtractedAt", event.target.value)}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
-          />
+          <Upload
+            listType="text"
+            beforeUpload={handleFileUpload}
+            fileList={value.attachments}
+            onRemove={(file) =>
+              onChange({
+                ...value,
+                attachments: value.attachments.filter((item) => item.uid !== file.uid),
+              })
+            }
+          >
+            <button
+              type="button"
+              className="mt-2 rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary"
+            >
+              Upload files
+            </button>
+          </Upload>
         </div>
       </div>
 
