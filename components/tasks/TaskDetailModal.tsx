@@ -30,6 +30,7 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resolvedTaskId = task?.id ?? task?._id ?? taskId;
 
   useEffect(() => {
     if (!open || !taskId) return;
@@ -130,18 +131,20 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <TaskAttachmentsClient
-              key={`attachments-${task.id ?? task._id ?? taskId}`}
-              taskId={task.id ?? task._id ?? taskId}
-              initialAttachments={task.attachments}
-            />
-            <TaskRemarksClient
-              key={`remarks-${task.id ?? task._id ?? taskId}`}
-              taskId={task.id ?? task._id ?? taskId}
-              initialRemarks={remarks}
-            />
-          </div>
+          {resolvedTaskId ? (
+            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <TaskAttachmentsClient
+                key={`attachments-${resolvedTaskId}`}
+                taskId={resolvedTaskId}
+                initialAttachments={task.attachments}
+              />
+              <TaskRemarksClient
+                key={`remarks-${resolvedTaskId}`}
+                taskId={resolvedTaskId}
+                initialRemarks={remarks}
+              />
+            </div>
+          ) : null}
         </div>
       )}
     </Modal>

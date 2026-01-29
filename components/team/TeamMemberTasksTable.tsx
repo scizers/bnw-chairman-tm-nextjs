@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Button, Space, Table } from "antd";
-import type { ColumnsType, SorterResult } from "antd/es/table";
+import type { ColumnsType } from "antd/es/table";
+import type { SorterResult } from "antd/es/table/interface";
 import StatusBadge from "@/components/common/StatusBadge";
 import type { Task } from "@/types/task";
 import { formatDate, formatRelative } from "@/lib/utils/format";

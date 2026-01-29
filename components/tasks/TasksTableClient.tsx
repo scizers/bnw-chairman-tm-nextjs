@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Input, Select, Space, Table } from "antd";
-import type { ColumnsType, SorterResult } from "antd/es/table";
+import type { ColumnsType } from "antd/es/table";
+import type { SorterResult } from "antd/es/table/interface";
 import StatusBadge from "@/components/common/StatusBadge";
 import type { Task } from "@/types/task";
 import type { TeamMember } from "@/types/team";
