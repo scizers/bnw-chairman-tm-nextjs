@@ -2,8 +2,9 @@
 
 import { useMemo } from "react";
 import { Select, Upload } from "antd";
-import type { UploadFile } from "antd/es/upload/interface";
+import type { UploadFile, UploadRequestOption } from "antd/es/upload/interface";
 import type { Mom } from "@/types/mom";
+import { momsApi } from "@/lib/api";
 
 interface MomFormProps {
   value: MomFormState;
@@ -49,21 +50,37 @@ export default function MomForm({
     onChange({ ...value, [key]: nextValue });
   };
 
-  const handleFileUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = typeof reader.result === "string" ? reader.result : "";
-      if (!url) return;
-      const next: UploadFile = {
-        uid: `${Date.now()}-${file.name}`,
-        name: file.name,
-        status: "done",
-        url,
-      };
-      onChange({ ...value, attachments: [...value.attachments, next] });
+  const handleUpload = async (options: UploadRequestOption) => {
+    const { file, onError, onSuccess, onProgress } = options;
+    const uploadFile = file as File;
+    const temp: UploadFile = {
+      uid: `${Date.now()}-${uploadFile.name}`,
+      name: uploadFile.name,
+      status: "uploading",
     };
-    reader.readAsDataURL(file);
-    return false;
+    onChange({ ...value, attachments: [...value.attachments, temp] });
+
+    try {
+      const result = await momsApi.uploadAttachment(uploadFile, (percent) => {
+        onProgress?.({ percent });
+      });
+      const updated: UploadFile = {
+        ...temp,
+        status: "done",
+        url: result.url,
+      };
+      onChange({
+        ...value,
+        attachments: [...value.attachments.filter((item) => item.uid !== temp.uid), updated],
+      });
+      onSuccess?.(result, new XMLHttpRequest());
+    } catch (err) {
+      onChange({
+        ...value,
+        attachments: value.attachments.filter((item) => item.uid !== temp.uid),
+      });
+      onError?.(err as Error);
+    }
   };
 
   return (
@@ -112,7 +129,7 @@ export default function MomForm({
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Attachments</label>
           <Upload
             listType="text"
-            beforeUpload={handleFileUpload}
+            customRequest={handleUpload}
             fileList={value.attachments}
             onRemove={(file) =>
               onChange({
