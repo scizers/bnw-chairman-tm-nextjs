@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { UploadFile } from "antd";
 import MomForm, { buildMomPayload, MomFormState } from "@/components/moms/MomForm";
 import { momsApi } from "@/lib/api";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
-import type { Mom } from "@/types/mom";
+import type { Mom, MomAttachment } from "@/types/mom";
 
 interface MomEditClientProps {
   momId: string;
@@ -18,12 +19,23 @@ const mapMomToForm = (mom: Mom): MomFormState => ({
   attendees: mom.attendees || [],
   rawNotes: mom.rawNotes || "",
   attachments:
-    mom.attachments?.map((item, index) => ({
-      uid: `${index}-${item.fileUrl}`,
-      name: item.fileUrl.split("/").pop() || `Attachment ${index + 1}`,
-      status: "done",
-      url: item.fileUrl,
-    })) || [],
+    mom.attachments?.map(
+      (item, index) =>
+        ({
+          uid: `${index}-${item.fileUrl}`,
+          name: item.fileName || item.fileUrl.split("/").pop() || `Attachment ${index + 1}`,
+          status: "done",
+          url: item.fileUrl,
+          thumbUrl: item.thumbnailUrl || undefined,
+          attachmentMeta: {
+            fileUrl: item.fileUrl,
+            thumbnailUrl: item.thumbnailUrl,
+            mimeType: item.mimeType,
+            fileName: item.fileName,
+            fileKind: item.fileKind,
+          } satisfies MomAttachment,
+        } as UploadFile & { attachmentMeta?: MomAttachment })
+    ) || [],
 });
 
 export default function MomEditClient({ momId }: MomEditClientProps) {

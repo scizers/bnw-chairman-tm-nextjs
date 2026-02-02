@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DatePicker, Select, Upload } from "antd";
 import dayjs from "dayjs";
 import type { UploadFile, UploadProps } from "antd";
-import type { Mom } from "@/types/mom";
+import type { Mom, MomAttachment } from "@/types/mom";
 import { momsApi, teamMembersApi } from "@/lib/api";
 
 interface MomFormProps {
@@ -25,6 +25,7 @@ export interface MomFormState {
 }
 
 type UploadRequestOption = Parameters<NonNullable<UploadProps["customRequest"]>>[0];
+type MomUploadFile = UploadFile & { attachmentMeta?: Partial<MomAttachment> };
 
 export const buildMomPayload = (state: MomFormState): Partial<Mom> => ({
   title: state.title.trim(),
@@ -32,9 +33,20 @@ export const buildMomPayload = (state: MomFormState): Partial<Mom> => ({
   attendees: state.attendees.map((entry) => entry.trim()).filter(Boolean),
   rawNotes: state.rawNotes.trim(),
   attachments: state.attachments
-    .map((file) => file.url || file.thumbUrl || null)
-    .filter((fileUrl): fileUrl is string => Boolean(fileUrl))
-    .map((fileUrl) => ({ fileUrl })),
+    .map((file) => {
+      const typedFile = file as MomUploadFile;
+      const meta = typedFile.attachmentMeta || {};
+      const fileUrl = meta.fileUrl || file.url || file.thumbUrl;
+      if (!fileUrl) return null;
+      return {
+        fileUrl,
+        thumbnailUrl: meta.thumbnailUrl,
+        mimeType: meta.mimeType,
+        fileName: meta.fileName || file.name,
+        fileKind: meta.fileKind,
+      };
+    })
+    .filter((attachment): attachment is MomAttachment => Boolean(attachment)),
 });
 
 export default function MomForm({
@@ -71,10 +83,18 @@ export default function MomForm({
       const result = await momsApi.uploadAttachment(uploadFile, (percent) => {
         onProgress?.({ percent });
       });
-      const updated: UploadFile = {
+      const updated: MomUploadFile = {
         ...temp,
         status: "done",
         url: result.url,
+        thumbUrl: result.thumbnailUrl || undefined,
+        attachmentMeta: {
+          fileUrl: result.url,
+          thumbnailUrl: result.thumbnailUrl || undefined,
+          mimeType: result.mimeType,
+          fileName: result.originalName || uploadFile.name,
+          fileKind: result.fileKind as MomAttachment["fileKind"],
+        },
       };
       onChange({
         ...value,
