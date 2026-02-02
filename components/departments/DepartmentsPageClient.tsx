@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Table } from "antd";
+import { Input, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
@@ -16,6 +16,7 @@ export default function DepartmentsPageClient() {
   const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,11 +56,20 @@ export default function DepartmentsPageClient() {
     );
   }
 
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredDepartments = normalizedSearch
+    ? departments.filter((dept) =>
+        dept.department.toLowerCase().includes(normalizedSearch)
+      )
+    : departments;
+
   const columns: ColumnsType<DepartmentSummary> = [
     {
       key: "department",
       title: "Department",
       dataIndex: "department",
+      sorter: (a, b) => a.department.localeCompare(b.department),
+      sortDirections: ["ascend", "descend"],
       render: (value: string) => (
         <div>
           <p className="font-semibold text-text-primary">{value}</p>
@@ -70,38 +80,57 @@ export default function DepartmentsPageClient() {
     {
       key: "memberCount",
       title: "Members",
-      dataIndex: "memberCount"
+      dataIndex: "memberCount",
+      sorter: (a, b) => (a.memberCount ?? 0) - (b.memberCount ?? 0),
+      sortDirections: ["descend", "ascend"]
     },
     {
       key: "taskCount",
       title: "Total Tasks",
-      dataIndex: "taskCount"
+      dataIndex: "taskCount",
+      sorter: (a, b) => (a.taskCount ?? 0) - (b.taskCount ?? 0),
+      sortDirections: ["descend", "ascend"]
     },
     {
       key: "openTasks",
       title: "Open Tasks",
-      dataIndex: "openTasks"
+      dataIndex: "openTasks",
+      sorter: (a, b) => (a.openTasks ?? 0) - (b.openTasks ?? 0),
+      sortDirections: ["descend", "ascend"]
     },
     {
       key: "overdueTasks",
       title: "Overdue",
       dataIndex: "overdueTasks",
+      sorter: (a, b) => (a.overdueTasks ?? 0) - (b.overdueTasks ?? 0),
+      sortDirections: ["descend", "ascend"],
       render: (value: number) => <StatusBadge label={String(value ?? 0)} />
     }
   ];
 
   return (
-    <Table
-      columns={columns}
-      dataSource={departments}
-      rowKey={(record) => record.department}
-      pagination={false}
-      rowClassName={() => "cursor-pointer"}
-      onRow={(record) => ({
-        onClick: () => {
-          router.push(`/departments/${encodeURIComponent(record.department)}`);
-        }
-      })}
-    />
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        <Input.Search
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          allowClear
+          placeholder="Search departments"
+          className="min-w-[240px] flex-1"
+        />
+      </div>
+      <Table
+        columns={columns}
+        dataSource={filteredDepartments}
+        rowKey={(record) => record.department}
+        pagination={false}
+        rowClassName={() => "cursor-pointer"}
+        onRow={(record) => ({
+          onClick: () => {
+            router.push(`/departments/${encodeURIComponent(record.department)}`);
+          }
+        })}
+      />
+    </div>
   );
 }
