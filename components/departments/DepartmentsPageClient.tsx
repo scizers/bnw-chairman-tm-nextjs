@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import ErrorState from "@/components/common/ErrorState";
@@ -11,6 +12,7 @@ import { departmentsApi } from "@/lib/api";
 import type { DepartmentSummary } from "@/types/department";
 
 export default function DepartmentsPageClient() {
+  const router = useRouter();
   const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +96,12 @@ export default function DepartmentsPageClient() {
       dataSource={departments}
       rowKey={(record) => record.department}
       pagination={false}
+      rowClassName={() => "cursor-pointer"}
+      onRow={(record) => ({
+        onClick: () => {
+          router.push(`/departments/${encodeURIComponent(record.department)}`);
+        }
+      })}
     />
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Select, Upload } from "antd";
+import { DatePicker, Select, Upload } from "antd";
+import dayjs from "dayjs";
 import type { UploadFile, UploadRequestOption } from "antd/es/upload/interface";
 import type { Mom } from "@/types/mom";
 import { momsApi, teamMembersApi } from "@/lib/api";
@@ -155,11 +156,13 @@ export default function MomForm({
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Meeting Date</label>
-          <input
-            type="date"
-            value={value.meetingDate}
-            onChange={(event) => handleChange("meetingDate", event.target.value)}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+          <DatePicker
+            value={value.meetingDate ? dayjs(value.meetingDate) : null}
+            onChange={(_, dateString) => handleChange("meetingDate", dateString ? String(dateString) : "")}
+            className="mt-2 w-full"
+            size="large"
+            allowClear
+            format="YYYY-MM-DD"
             required
           />
         </div>

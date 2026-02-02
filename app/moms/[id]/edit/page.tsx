@@ -1,10 +1,11 @@
+"use client";
+
+import { useParams } from "next/navigation";
 import MomEditClient from "@/components/moms/MomEditClient";
 
-interface MomEditPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function MomEditPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
 
-export default async function MomEditPage({ params }: MomEditPageProps) {
-  const { id } = await params;
   return <MomEditClient momId={id} />;
 }

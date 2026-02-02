@@ -1,3 +1,5 @@
+"use client";
+
 import MomsPageClient from "@/components/moms/MomsPageClient";
 
 export default function MomsPage() {

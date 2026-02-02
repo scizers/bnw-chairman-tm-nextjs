@@ -1,9 +1,43 @@
 import { clientApi } from "@/lib/api/client";
 import type { Mom } from "@/types/mom";
 
+export interface MomListMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  sortBy?: string;
+  sortDir?: string;
+}
+
+export interface MomListResponse {
+  data: Mom[];
+  meta: MomListMeta;
+}
+
 export const momsApi = {
-  list: async () => {
-    const { data } = await clientApi.get<Mom[]>("/moms");
+  list: async (params?: {
+    q?: string;
+    attendees?: string;
+    meetingFrom?: string;
+    meetingTo?: string;
+    sortBy?: string;
+    sortDir?: string;
+  }) => {
+    const { data } = await clientApi.get<Mom[]>("/moms", { params });
+    return data;
+  },
+  listPaged: async (params: {
+    q?: string;
+    attendees?: string;
+    meetingFrom?: string;
+    meetingTo?: string;
+    sortBy?: string;
+    sortDir?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
+    const { data } = await clientApi.get<MomListResponse>("/moms", { params });
     return data;
   },
   getById: async (momId: string) => {

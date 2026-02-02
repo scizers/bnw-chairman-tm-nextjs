@@ -1,3 +1,5 @@
+"use client";
+
 import TeamMemberCreateClient from "@/components/team/TeamMemberCreateClient";
 
 export default function TeamMemberCreatePage() {

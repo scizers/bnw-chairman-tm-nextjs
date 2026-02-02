@@ -1,3 +1,5 @@
+"use client";
+
 import DepartmentsPageClient from "@/components/departments/DepartmentsPageClient";
 
 export default function DepartmentsPage() {

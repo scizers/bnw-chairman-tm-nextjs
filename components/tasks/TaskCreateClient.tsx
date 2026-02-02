@@ -2,18 +2,37 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DatePicker, Select } from "antd";
+import dayjs from "dayjs";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import { tasksApi, teamMembersApi } from "@/lib/api";
 import type { TeamMember } from "@/types/team";
 
-const getDefaultDueDate = () => {
+const getDefaultDate = (daysFromToday = 0) => {
   const date = new Date();
-  date.setDate(date.getDate() + 7);
+  date.setDate(date.getDate() + daysFromToday);
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const getDefaultDueDate = () => {
+  return getDefaultDate(7);
+};
+
+const formatDayOffset = (value?: string) => {
+  if (!value) return "";
+  const today = dayjs().startOf("day");
+  const selected = dayjs(value).startOf("day");
+  const diff = selected.diff(today, "day");
+
+  if (diff === 0) return "This date is today.";
+  if (diff === 1) return "This date is 1 day from today.";
+  if (diff > 1) return `This date is ${diff} days from today.`;
+  if (diff === -1) return "This date was 1 day ago.";
+  return `This date was ${Math.abs(diff)} days ago.`;
 };
 
 export default function TaskCreateClient() {
@@ -29,6 +48,7 @@ export default function TaskCreateClient() {
     assignedTo: "",
     status: "open",
     priority: "low",
+    startDate: getDefaultDate(),
     dueDate: getDefaultDueDate()
   });
 
@@ -54,6 +74,7 @@ export default function TaskCreateClient() {
       form.title.trim().length > 0 &&
       form.assignedTo.trim().length > 0 &&
       form.status.trim().length > 0 &&
+      form.startDate.trim().length > 0 &&
       form.dueDate.trim().length > 0
     );
   }, [form]);
@@ -69,6 +90,7 @@ export default function TaskCreateClient() {
         assignedTo: form.assignedTo,
         status: form.status,
         priority: form.priority,
+        startDate: new Date(form.startDate).toISOString(),
         dueDate: new Date(form.dueDate).toISOString()
       });
       const id = created?.id ?? created?._id;
@@ -94,77 +116,98 @@ export default function TaskCreateClient() {
 
   return (
     <div className="rounded-xl bg-surface-card p-6 shadow-card">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="md:col-span-3">
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Task Name</label>
           <input
             value={form.title}
             onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-lg font-semibold text-text-primary"
             required
           />
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Assignee</label>
-          <select
-            value={form.assignedTo}
-            onChange={(event) => setForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
-            required
-          >
-            <option value="">Select assignee</option>
-            {teamMembers.map((member, index) => {
+          <Select
+            value={form.assignedTo || undefined}
+            onChange={(value) => setForm((prev) => ({ ...prev, assignedTo: value }))}
+            className="mt-2 w-full"
+            placeholder="Select assignee"
+            size="large"
+            showSearch
+            optionFilterProp="label"
+            options={teamMembers.map((member, index) => {
               const value =
                 member.id ?? member._id ?? member.email ?? member.name ?? String(index);
-              return (
-                <option key={`${value}-${index}`} value={value}>
-                  {member.name}
-                </option>
-              );
+              return {
+                value,
+                label: member.name ?? "Unnamed"
+              };
             })}
-          </select>
+          />
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</label>
-          <select
+          <Select
             value={form.status}
-            onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
-            required
-          >
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="overdue">Overdue</option>
-            <option value="blocked">Blocked</option>
-            <option value="critical">Critical</option>
-            <option value="completed">Completed</option>
-          </select>
+            onChange={(value) => setForm((prev) => ({ ...prev, status: value }))}
+            className="mt-2 w-full"
+            size="large"
+            options={[
+              { value: "open", label: "Open" },
+              { value: "in_progress", label: "In Progress" },
+              { value: "overdue", label: "Overdue" },
+              { value: "blocked", label: "Blocked" },
+              { value: "critical", label: "Critical" },
+              { value: "completed", label: "Completed" }
+            ]}
+          />
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Priority</label>
-          <select
+          <Select
             value={form.priority}
-            onChange={(event) => setForm((prev) => ({ ...prev, priority: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
-          >
-            <option value="low">Low</option>
-            <option value="normal">Normal</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Due Date</label>
-          <input
-            type="date"
-            value={form.dueDate}
-            onChange={(event) => setForm((prev) => ({ ...prev, dueDate: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
-            required
+            onChange={(value) => setForm((prev) => ({ ...prev, priority: value }))}
+            className="mt-2 w-full"
+            size="large"
+            options={[
+              { value: "low", label: "Low" },
+              { value: "normal", label: "Normal" },
+              { value: "medium", label: "Medium" },
+              { value: "high", label: "High" },
+              { value: "critical", label: "Critical" }
+            ]}
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-1">
+          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Start Date</label>
+          <DatePicker
+            value={form.startDate ? dayjs(form.startDate) : undefined}
+            onChange={(date, dateString) =>
+              setForm((prev) => ({ ...prev, startDate: String(dateString) }))
+            }
+            className="mt-2 w-full"
+            size="large"
+            allowClear={false}
+            format="YYYY-MM-DD"
+          />
+          <p className="mt-2 text-xs text-text-muted">{formatDayOffset(form.startDate)}</p>
+        </div>
+        <div className="md:col-span-1">
+          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Due Date</label>
+          <DatePicker
+            value={form.dueDate ? dayjs(form.dueDate) : undefined}
+            onChange={(date, dateString) =>
+              setForm((prev) => ({ ...prev, dueDate: String(dateString) }))
+            }
+            className="mt-2 w-full"
+            size="large"
+            allowClear={false}
+            format="YYYY-MM-DD"
+          />
+          <p className="mt-2 text-xs text-text-muted">{formatDayOffset(form.dueDate)}</p>
+        </div>
+        <div className="md:col-span-3">
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Description</label>
           <textarea
             value={form.description}

@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import ChartCard from "@/components/common/ChartCard";
 import KpiCard from "@/components/common/KpiCard";
 import UrgentTasksTableClient from "@/components/dashboard/UrgentTasksTableClient";
@@ -5,79 +8,45 @@ import PendingLoadTableClient from "@/components/dashboard/PendingLoadTableClien
 import TasksStatusChart from "@/components/charts/TasksStatusChart";
 import TasksPriorityDonut from "@/components/charts/TasksPriorityDonut";
 import EmptyState from "@/components/common/EmptyState";
-import { serverTasksApi, serverTeamMembersApi } from "@/lib/api/server";
-import type { Task } from "@/types/task";
-import type { TeamMember } from "@/types/team";
-import { attachAssigneeNames, normalizeTasks } from "@/lib/utils/task";
+import { tasksApi, type DashboardStats } from "@/lib/api/tasks";
 
-const daysBetween = (start: Date, end: Date) =>
-  Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
-export default async function DashboardPage() {
-  let tasks: Task[] = [];
-  let team: TeamMember[] = [];
+  useEffect(() => {
+    let isActive = true;
 
-  try {
-    const [taskData, teamData] = await Promise.all([
-      serverTasksApi.list(),
-      serverTeamMembersApi.list()
-    ]);
-    team = teamData ?? [];
-    tasks = attachAssigneeNames(normalizeTasks(taskData ?? []), team);
-  } catch (error) {
-    tasks = [];
-    team = [];
-  }
+    const load = async () => {
+      setIsLoading(true);
+      setHasError(false);
+      try {
+        const dashboardStats = await tasksApi.getDashboardStats();
+        if (!isActive) return;
+        setStats(dashboardStats);
+      } catch (error) {
+        if (!isActive) return;
+        setStats(null);
+        setHasError(true);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
 
-  const now = new Date();
-  const totalOpen = tasks.filter((task) => task.status === "open").length;
-  const overdueTasks = tasks.filter((task) => {
-    const due = task.dueDate ? new Date(task.dueDate) : null;
-    return task.status === "overdue" || (!!due && due < now && task.status !== "completed");
-  });
-  const criticalTasks = tasks.filter((task) => task.priority === "critical");
-  const completedThisWeek = tasks.filter((task) => {
-    if (task.status !== "completed" || !task.updatedAt) return false;
-    return daysBetween(new Date(task.updatedAt), now) <= 7;
-  });
-  const staleTasks = tasks.filter((task) => {
-    if (!task.updatedAt) return false;
-    return daysBetween(new Date(task.updatedAt), now) >= 3;
-  });
+    load();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
-  const statusCounts = ["open", "in_progress", "overdue", "completed", "critical"].map(
-    (status) => ({
-      status,
-      count: tasks.filter((task) => task.status === status).length
-    })
-  );
-
-  const priorityCounts = ["low", "medium", "high", "critical"].map((priority) => ({
-    priority,
-    count: tasks.filter((task) => task.priority === priority).length
-  }));
-
-  const urgentTasks = [...tasks]
-    .sort((a, b) => {
-      const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-      const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-      const aOverdue = a.status === "overdue" || aDue < now.getTime();
-      const bOverdue = b.status === "overdue" || bDue < now.getTime();
-      if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
-      return aDue - bDue;
-    })
-    .slice(0, 5);
-
-  const pendingCounts = team
-    .map((member) => {
-      const pending = tasks.filter(
-        (task) =>
-          task.assignedTo === member.id &&
-          ["open", "in_progress", "overdue"].includes(task.status)
-      ).length;
-      return { ...member, pending };
-    })
-    .sort((a, b) => b.pending - a.pending);
+  const kpis = stats?.kpis;
+  const statusCounts = stats?.statusCounts ?? [];
+  const priorityCounts = stats?.priorityCounts ?? [];
+  const urgentTasks = stats?.urgentTasks ?? [];
+  const pendingCounts = stats?.pendingCounts ?? [];
 
   return (
     <div className="space-y-8">
@@ -88,12 +57,16 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {hasError ? (
+        <EmptyState title="Unable to load dashboard data" description="Please try again." />
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <KpiCard title="Total Open Tasks" value={totalOpen} />
-        <KpiCard title="Overdue Tasks" value={overdueTasks.length} />
-        <KpiCard title="Critical Tasks" value={criticalTasks.length} />
-        <KpiCard title="Completed This Week" value={completedThisWeek.length} />
-        <KpiCard title="Tasks Not Updated 3+ Days" value={staleTasks.length} />
+        <KpiCard title="Total Open Tasks" value={isLoading ? "—" : kpis?.totalOpen ?? 0} />
+        <KpiCard title="Overdue Tasks" value={isLoading ? "—" : kpis?.overdueTasks ?? 0} />
+        <KpiCard title="Critical Tasks" value={isLoading ? "—" : kpis?.criticalTasks ?? 0} />
+        <KpiCard title="Completed This Week" value={isLoading ? "—" : kpis?.completedThisWeek ?? 0} />
+        <KpiCard title="Tasks Not Updated 3+ Days" value={isLoading ? "—" : kpis?.staleTasks ?? 0} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

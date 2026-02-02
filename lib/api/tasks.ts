@@ -31,6 +31,30 @@ export interface TaskListResponse {
   meta: TaskListMeta;
 }
 
+export interface DashboardStats {
+  kpis: {
+    totalOpen: number;
+    overdueTasks: number;
+    criticalTasks: number;
+    completedThisWeek: number;
+    staleTasks: number;
+  };
+  statusCounts: Array<{ status: string; count: number }>;
+  priorityCounts: Array<{ priority: string; count: number }>;
+  urgentTasks: Task[];
+  pendingCounts: Array<
+    {
+      id?: string;
+      _id?: string;
+      name: string;
+      designation?: string;
+      department?: string;
+      email?: string;
+      pending: number;
+    }
+  >;
+}
+
 export const tasksApi = {
   list: async () => {
     const { data } = await clientApi.get<Task[]>("/tasks");
@@ -76,6 +100,27 @@ export const tasksApi = {
   },
   getRemarks: async (taskId: string) => {
     const { data } = await clientApi.get<Remark[]>(`/tasks/${taskId}/remarks`);
+    return data;
+  },
+  uploadAttachment: async (file: File, onProgress?: (percent: number) => void) => {
+    const form = new FormData();
+    form.append("file", file);
+    const { data } = await clientApi.post<{ url: string; mimeType: string }>(
+      "/uploads/tasks",
+      form,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!event.total) return;
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress?.(percent);
+        }
+      }
+    );
+    return data;
+  },
+  getDashboardStats: async () => {
+    const { data } = await clientApi.get<DashboardStats>("/tasks/dashboard-stats");
     return data;
   }
 };

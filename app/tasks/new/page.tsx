@@ -1,3 +1,5 @@
+"use client";
+
 import TaskCreateClient from "@/components/tasks/TaskCreateClient";
 
 export default function TaskCreatePage() {

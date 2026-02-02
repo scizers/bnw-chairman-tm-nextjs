@@ -18,7 +18,9 @@ interface TasksTableClientProps {
   pagination?: TaskListMeta;
   loading?: boolean;
   hideMemberFilter?: boolean;
+  hideDepartmentFilter?: boolean;
   fixedMemberIds?: string[];
+  fixedDepartment?: string;
   onViewTask?: (taskId: string) => void;
   onEditTask?: (taskId: string) => void;
 }
@@ -62,7 +64,9 @@ export default function TasksTableClient({
   pagination,
   loading,
   hideMemberFilter,
+  hideDepartmentFilter,
   fixedMemberIds,
+  fixedDepartment,
   onViewTask,
   onEditTask
 }: TasksTableClientProps) {
@@ -73,6 +77,10 @@ export default function TasksTableClient({
     () => (fixedMemberIds ? normalizeList(fixedMemberIds) : null),
     [fixedMemberIds]
   );
+  const lockedDepartment = useMemo(() => {
+    const value = fixedDepartment?.trim();
+    return value ? [value] : null;
+  }, [fixedDepartment]);
   const [statusFilter, setStatusFilter] = useState<string[]>(() =>
     parseListParam(searchParams.get("status"))
   );
@@ -83,7 +91,7 @@ export default function TasksTableClient({
     lockedMemberIds ?? parseListParam(searchParams.get("member"))
   );
   const [departmentFilter, setDepartmentFilter] = useState<string[]>(() =>
-    parseListParam(searchParams.get("department"))
+    lockedDepartment ?? parseListParam(searchParams.get("department"))
   );
   const [titleQuery, setTitleQuery] = useState(() => searchParams.get("q") ?? "");
   const [dueFrom, setDueFrom] = useState(() => searchParams.get("dueFrom") ?? "");
@@ -110,8 +118,12 @@ export default function TasksTableClient({
     } else if (!areListsEqual(lockedMemberIds, memberFilter)) {
       setMemberFilter(lockedMemberIds);
     }
-    const nextDepartment = parseListParam(searchParams.get("department"));
-    if (!areListsEqual(nextDepartment, departmentFilter)) setDepartmentFilter(nextDepartment);
+    if (!lockedDepartment) {
+      const nextDepartment = parseListParam(searchParams.get("department"));
+      if (!areListsEqual(nextDepartment, departmentFilter)) setDepartmentFilter(nextDepartment);
+    } else if (!areListsEqual(lockedDepartment, departmentFilter)) {
+      setDepartmentFilter(lockedDepartment);
+    }
     const nextTitle = searchParams.get("q") ?? "";
     if (nextTitle !== titleQuery) setTitleQuery(nextTitle);
     const nextDueFrom = searchParams.get("dueFrom") ?? "";
@@ -128,7 +140,7 @@ export default function TasksTableClient({
     if (PAGE_SIZE_OPTIONS.includes(nextPageSize) && nextPageSize !== pageSize) {
       setPageSize(nextPageSize);
     }
-  }, [searchParamsString, lockedMemberIds]);
+  }, [searchParamsString, lockedMemberIds, lockedDepartment]);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParamsString);
@@ -151,7 +163,7 @@ export default function TasksTableClient({
     setListParam("status", statusFilter);
     setListParam("priority", priorityFilter);
     setListParam("member", lockedMemberIds ?? memberFilter);
-    setListParam("department", departmentFilter);
+    setListParam("department", lockedDepartment ?? departmentFilter);
     setParam("q", titleQuery.trim());
     setParam("dueFrom", dueFrom);
     setParam("dueTo", dueTo);
@@ -178,6 +190,7 @@ export default function TasksTableClient({
     router,
     searchParamsString,
     lockedMemberIds,
+    lockedDepartment,
     departmentFilter
   ]);
 
@@ -421,19 +434,21 @@ export default function TasksTableClient({
           options={PRIORITY_OPTIONS}
           className="min-w-[180px]"
         />
-        <Select
-          mode="multiple"
-          allowClear
-          maxTagCount="responsive"
-          placeholder="All Departments"
-          value={departmentFilter}
-          onChange={(values) => {
-            setDepartmentFilter(values);
-            setPage(1);
-          }}
-          options={departmentOptions}
-          className="min-w-[200px]"
-        />
+        {hideDepartmentFilter || lockedDepartment ? null : (
+          <Select
+            mode="multiple"
+            allowClear
+            maxTagCount="responsive"
+            placeholder="All Departments"
+            value={departmentFilter}
+            onChange={(values) => {
+              setDepartmentFilter(values);
+              setPage(1);
+            }}
+            options={departmentOptions}
+            className="min-w-[200px]"
+          />
+        )}
         {hideMemberFilter || lockedMemberIds ? null : (
           <Select
             mode="multiple"

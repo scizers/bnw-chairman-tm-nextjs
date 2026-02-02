@@ -1,3 +1,5 @@
+"use client";
+
 import MomCreateClient from "@/components/moms/MomCreateClient";
 
 export default function MomCreatePage() {
