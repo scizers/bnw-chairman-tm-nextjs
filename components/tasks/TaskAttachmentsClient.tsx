@@ -27,15 +27,21 @@ export default function TaskAttachmentsClient({
   taskId,
   initialAttachments = []
 }: TaskAttachmentsClientProps) {
-  const normalizeAttachment = (item: TaskAttachment | string): TaskAttachment =>
-    typeof item === "string" ? { fileUrl: item } : item;
+  const normalizeAttachment = (item: TaskAttachment | string): TaskAttachment | null => {
+    if (!item) return null;
+    if (typeof item === "string") {
+      return item ? { fileUrl: item } : null;
+    }
+    return item.fileUrl ? item : null;
+  };
 
   const [attachments, setAttachments] = useState<TaskAttachment[]>(
-    initialAttachments.map(normalizeAttachment)
+    initialAttachments.map(normalizeAttachment).filter(Boolean) as TaskAttachment[]
   );
   const [fileList, setFileList] = useState<UploadFile[]>(
-    initialAttachments.map((item, index) => {
-      const attachment = normalizeAttachment(item);
+    (initialAttachments
+      .map(normalizeAttachment)
+      .filter(Boolean) as TaskAttachment[]).map((attachment, index) => {
       const name =
         attachment.fileName ||
         attachment.fileUrl.split("?")[0].split("/").pop() ||
@@ -107,10 +113,14 @@ export default function TaskAttachmentsClient({
     return "other";
   };
 
-  const resolveName = (item: TaskAttachment, index?: number) =>
-    item.fileName ||
-    item.fileUrl.split("?")[0].split("/").pop() ||
-    `Attachment ${typeof index === "number" ? index + 1 : ""}`.trim();
+  const resolveName = (item: TaskAttachment, index?: number) => {
+    const url = item.fileUrl || "";
+    return (
+      item.fileName ||
+      url.split("?")[0].split("/").pop() ||
+      `Attachment ${typeof index === "number" ? index + 1 : ""}`.trim()
+    );
+  };
 
   const iconForKind = (kind: TaskAttachmentKind) => {
     if (kind === "image") return FileImage;
@@ -152,7 +162,7 @@ export default function TaskAttachmentsClient({
             const thumbUrl = item.thumbnailUrl || (kind === "image" ? item.fileUrl : "");
             return (
               <div
-                key={`${item.fileUrl}-${index}`}
+                key={`${item.fileUrl || "attachment"}-${index}`}
                 className="group relative flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-card p-3"
               >
                 <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-black/30">
