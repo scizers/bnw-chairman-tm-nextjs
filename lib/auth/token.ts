@@ -1,6 +1,6 @@
 const AUTH_TOKEN_KEY = "auth_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
-const DEFAULT_MAX_AGE = 60 * 60 * 24 * 7;
+const DEFAULT_MAX_AGE = 60 * 60 * 24 * 30;
 
 export const persistAuthSession = (
   token: string,
