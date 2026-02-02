@@ -11,6 +11,7 @@ import {
   FileImage,
   FileSpreadsheet,
   FileText,
+  Trash2,
   X,
 } from "lucide-react";
 import { momsApi } from "@/lib/api";
@@ -30,6 +31,7 @@ export default function MomDetailClient({ momId }: MomDetailClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [preview, setPreview] = useState<MomAttachment | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -127,6 +129,24 @@ export default function MomDetailClient({ momId }: MomDetailClientProps) {
     );
   };
 
+  const handleRemoveAttachment = async (item: MomAttachment) => {
+    if (!item.fileUrl) return;
+    if (!confirm("Remove this attachment?")) return;
+    setRemoving(item.fileUrl);
+    try {
+      const next = attachments.filter((entry) => entry.fileUrl !== item.fileUrl);
+      const updated = await momsApi.update(id, { attachments: next });
+      setMom(updated ?? null);
+      if (preview?.fileUrl === item.fileUrl) {
+        setPreview(null);
+      }
+    } catch {
+      setError("Failed to remove attachment.");
+    } finally {
+      setRemoving(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -185,9 +205,12 @@ export default function MomDetailClient({ momId }: MomDetailClientProps) {
                   const Icon = iconForKind(kind);
                   const thumbUrl = item.thumbnailUrl || (kind === "image" ? item.fileUrl : "");
                   return (
-                    <div
+                    <button
                       key={`${item.fileUrl}-${index}`}
-                      className="group relative flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-muted/60 p-3"
+                      type="button"
+                      onClick={() => setPreview(item)}
+                      className="group relative flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface-muted/60 p-3 text-left transition hover:border-border-strong"
+                      aria-label={`Preview ${name}`}
                     >
                       <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-black/30">
                         {thumbUrl ? (
@@ -197,22 +220,34 @@ export default function MomDetailClient({ momId }: MomDetailClientProps) {
                             <Icon className="h-7 w-7 text-text-muted" />
                           </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setPreview(item)}
-                          className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
-                          aria-label={`Preview ${name}`}
-                        >
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
                           <Eye className="h-5 w-5 text-white" />
-                        </button>
+                        </div>
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-text-primary">{name}</p>
                         <p className="mt-1 text-xs uppercase tracking-[0.18em] text-text-muted">
                           {kind === "other" ? "file" : kind}
                         </p>
                       </div>
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full border border-border-subtle px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-text-muted">
+                          View
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleRemoveAttachment(item);
+                          }}
+                          disabled={removing === item.fileUrl}
+                          className="rounded-full border border-red-500/40 p-2 text-red-300 disabled:opacity-60"
+                          aria-label={`Remove ${name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
