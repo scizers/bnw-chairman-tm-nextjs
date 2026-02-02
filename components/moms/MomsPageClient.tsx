@@ -127,7 +127,7 @@ export default function MomsPageClient() {
   const columns: ColumnsType<Mom> = [
     {
       key: "title",
-      columnKey: "title",
+      dataIndex: "title",
       title: "Title",
       sorter: true,
       sortOrder:
@@ -150,7 +150,7 @@ export default function MomsPageClient() {
     },
     {
       key: "meetingDate",
-      columnKey: "meetingDate",
+      dataIndex: "meetingDate",
       title: "Meeting Date",
       sorter: true,
       sortOrder:
@@ -172,7 +172,7 @@ export default function MomsPageClient() {
     },
     {
       key: "createdAt",
-      columnKey: "createdAt",
+      dataIndex: "createdAt",
       title: "Created",
       sorter: true,
       sortOrder:

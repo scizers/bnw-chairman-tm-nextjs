@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { Upload } from "antd";
-import type { UploadFile, UploadRequestOption } from "antd/es/upload/interface";
+import type { UploadFile, UploadProps } from "antd";
 import { tasksApi } from "@/lib/api";
 
 interface TaskAttachmentsClientProps {
   taskId: string;
   initialAttachments?: string[];
 }
+
+type UploadRequestOption = Parameters<NonNullable<UploadProps["customRequest"]>>[0];
 
 export default function TaskAttachmentsClient({
   taskId,

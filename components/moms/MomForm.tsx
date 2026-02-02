@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DatePicker, Select, Upload } from "antd";
 import dayjs from "dayjs";
-import type { UploadFile, UploadRequestOption } from "antd/es/upload/interface";
+import type { UploadFile, UploadProps } from "antd";
 import type { Mom } from "@/types/mom";
 import { momsApi, teamMembersApi } from "@/lib/api";
 
@@ -23,6 +23,8 @@ export interface MomFormState {
   rawNotes: string;
   attachments: UploadFile[];
 }
+
+type UploadRequestOption = Parameters<NonNullable<UploadProps["customRequest"]>>[0];
 
 export const buildMomPayload = (state: MomFormState): Partial<Mom> => ({
   title: state.title.trim(),
