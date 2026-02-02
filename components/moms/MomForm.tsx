@@ -32,21 +32,21 @@ export const buildMomPayload = (state: MomFormState): Partial<Mom> => ({
   meetingDate: state.meetingDate ? new Date(state.meetingDate).toISOString() : undefined,
   attendees: state.attendees.map((entry) => entry.trim()).filter(Boolean),
   rawNotes: state.rawNotes.trim(),
-  attachments: state.attachments
-    .map((file) => {
-      const typedFile = file as MomUploadFile;
-      const meta = typedFile.attachmentMeta || {};
-      const fileUrl = meta.fileUrl || file.url || file.thumbUrl;
-      if (!fileUrl) return null;
-      return {
+  attachments: state.attachments.flatMap((file): MomAttachment[] => {
+    const typedFile = file as MomUploadFile;
+    const meta = typedFile.attachmentMeta || {};
+    const fileUrl = meta.fileUrl || file.url || file.thumbUrl;
+    if (!fileUrl) return [];
+    return [
+      {
         fileUrl,
         thumbnailUrl: meta.thumbnailUrl,
         mimeType: meta.mimeType,
         fileName: meta.fileName || file.name,
         fileKind: meta.fileKind,
-      };
-    })
-    .filter((attachment): attachment is MomAttachment => Boolean(attachment)),
+      },
+    ];
+  }),
 });
 
 export default function MomForm({
