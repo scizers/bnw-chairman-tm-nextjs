@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Input, Select, Space, Table } from "antd";
+import { Button, DatePicker, Input, Select, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { SorterResult } from "antd/es/table/interface";
+import dayjs from "dayjs";
 import StatusBadge from "@/components/common/StatusBadge";
 import type { Task } from "@/types/task";
 import type { TeamMember } from "@/types/team";
@@ -386,26 +387,28 @@ export default function TasksTableClient({
           <span className="text-[11px] uppercase tracking-[0.2em] text-text-muted">
             Due
           </span>
-          <input
-            type="date"
-            value={dueFrom}
-            onChange={(event) => {
-              setDueFrom(event.target.value);
+          <DatePicker
+            value={dueFrom ? dayjs(dueFrom) : null}
+            onChange={(_, dateString) => {
+              setDueFrom(dateString ? String(dateString) : "");
               setPage(1);
             }}
-            className="rounded-full border border-border-subtle bg-surface-card px-3 py-2 text-xs text-text-primary"
+            className="min-w-[160px]"
+            allowClear
+            format="YYYY-MM-DD"
           />
           <span className="text-[11px] uppercase tracking-[0.2em] text-text-muted">
             to
           </span>
-          <input
-            type="date"
-            value={dueTo}
-            onChange={(event) => {
-              setDueTo(event.target.value);
+          <DatePicker
+            value={dueTo ? dayjs(dueTo) : null}
+            onChange={(_, dateString) => {
+              setDueTo(dateString ? String(dateString) : "");
               setPage(1);
             }}
-            className="rounded-full border border-border-subtle bg-surface-card px-3 py-2 text-xs text-text-primary"
+            className="min-w-[160px]"
+            allowClear
+            format="YYYY-MM-DD"
           />
         </div>
         <Select

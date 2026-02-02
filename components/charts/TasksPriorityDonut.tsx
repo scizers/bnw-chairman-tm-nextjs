@@ -26,6 +26,8 @@ export default function TasksPriorityDonut({ data }: TasksPriorityDonutProps) {
               borderRadius: "12px",
               color: "#f8f5ef"
             }}
+            itemStyle={{ color: "#ffffff" }}
+            labelStyle={{ color: "#ffffff" }}
           />
           <Pie
             data={data}
