@@ -10,6 +10,7 @@ import type { Task } from "@/types/task";
 import type { TeamMember } from "@/types/team";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import type { TaskListMeta } from "@/lib/api/tasks";
+import { resolveTeamMemberId } from "@/lib/utils/task";
 
 interface TasksTableClientProps {
   tasks: Task[];
@@ -81,6 +82,9 @@ export default function TasksTableClient({
   const [memberFilter, setMemberFilter] = useState<string[]>(() =>
     lockedMemberIds ?? parseListParam(searchParams.get("member"))
   );
+  const [departmentFilter, setDepartmentFilter] = useState<string[]>(() =>
+    parseListParam(searchParams.get("department"))
+  );
   const [titleQuery, setTitleQuery] = useState(() => searchParams.get("q") ?? "");
   const [dueFrom, setDueFrom] = useState(() => searchParams.get("dueFrom") ?? "");
   const [dueTo, setDueTo] = useState(() => searchParams.get("dueTo") ?? "");
@@ -106,6 +110,8 @@ export default function TasksTableClient({
     } else if (!areListsEqual(lockedMemberIds, memberFilter)) {
       setMemberFilter(lockedMemberIds);
     }
+    const nextDepartment = parseListParam(searchParams.get("department"));
+    if (!areListsEqual(nextDepartment, departmentFilter)) setDepartmentFilter(nextDepartment);
     const nextTitle = searchParams.get("q") ?? "";
     if (nextTitle !== titleQuery) setTitleQuery(nextTitle);
     const nextDueFrom = searchParams.get("dueFrom") ?? "";
@@ -145,6 +151,7 @@ export default function TasksTableClient({
     setListParam("status", statusFilter);
     setListParam("priority", priorityFilter);
     setListParam("member", lockedMemberIds ?? memberFilter);
+    setListParam("department", departmentFilter);
     setParam("q", titleQuery.trim());
     setParam("dueFrom", dueFrom);
     setParam("dueTo", dueTo);
@@ -170,7 +177,8 @@ export default function TasksTableClient({
     pageSize,
     router,
     searchParamsString,
-    lockedMemberIds
+    lockedMemberIds,
+    departmentFilter
   ]);
 
   const totalTasks = pagination?.total ?? tasks.length;
@@ -196,6 +204,33 @@ export default function TasksTableClient({
       }),
     [teamMembers]
   );
+
+  const departmentOptions = useMemo(() => {
+    const names = new Set<string>();
+    let hasUnassigned = false;
+    teamMembers.forEach((member) => {
+      const department = member.department?.trim();
+      if (department) {
+        names.add(department);
+      } else {
+        hasUnassigned = true;
+      }
+    });
+    const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
+    if (hasUnassigned) sorted.push("Unassigned");
+    return sorted.map((dept) => ({ value: dept, label: dept }));
+  }, [teamMembers]);
+
+  const memberDepartmentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    teamMembers.forEach((member) => {
+      const id = resolveTeamMemberId(member);
+      if (id) {
+        map.set(id, member.department?.trim() || "");
+      }
+    });
+    return map;
+  }, [teamMembers]);
 
   const handleView = (taskId?: string) => {
     if (!taskId) return;
@@ -241,7 +276,19 @@ export default function TasksTableClient({
     {
       key: "assignedTo",
       title: "Assigned To",
-      render: (row: Task) => row.assignedToName || "Unassigned"
+      render: (row: Task) => {
+        const name = row.assignedToName || "Unassigned";
+        const department =
+          row.assignedTo && memberDepartmentMap.get(row.assignedTo)
+            ? memberDepartmentMap.get(row.assignedTo)
+            : "";
+        return (
+          <div>
+            <p className="font-semibold text-text-primary">{name}</p>
+            <p className="text-xs text-text-muted">{department || "Department"}</p>
+          </div>
+        );
+      }
     },
     {
       key: "status",
@@ -373,6 +420,19 @@ export default function TasksTableClient({
           }}
           options={PRIORITY_OPTIONS}
           className="min-w-[180px]"
+        />
+        <Select
+          mode="multiple"
+          allowClear
+          maxTagCount="responsive"
+          placeholder="All Departments"
+          value={departmentFilter}
+          onChange={(values) => {
+            setDepartmentFilter(values);
+            setPage(1);
+          }}
+          options={departmentOptions}
+          className="min-w-[200px]"
         />
         {hideMemberFilter || lockedMemberIds ? null : (
           <Select

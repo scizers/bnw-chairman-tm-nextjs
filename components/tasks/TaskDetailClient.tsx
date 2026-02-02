@@ -6,6 +6,7 @@ import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import StatusBadge from "@/components/common/StatusBadge";
+import { Tabs } from "antd";
 import TaskRemarksClient from "@/components/tasks/TaskRemarksClient";
 import TaskAttachmentsClient from "@/components/tasks/TaskAttachmentsClient";
 import { tasksApi, teamMembersApi } from "@/lib/api";
@@ -64,6 +65,14 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
     return member?.name ?? "";
   }, [task, teamMembers]);
 
+  const assignedToDepartment = useMemo(() => {
+    if (!task) return "";
+    const member = teamMembers.find(
+      (item) => resolveTeamMemberId(item) === task.assignedTo
+    );
+    return member?.department?.trim() ?? "";
+  }, [task, teamMembers]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -118,29 +127,34 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
+      <div className="space-y-6">
+        <div>
           <div className="rounded-xl bg-surface-card p-6 shadow-card">
             <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Task Information</p>
             <p className="mt-3 text-sm text-text-primary">{task.description || "No description."}</p>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</p>
-                <p className="mt-2 text-sm text-text-primary">
-                  {assignedToName || "Unassigned"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</p>
                 <div className="mt-2">
-                  <StatusBadge label={task.status} />
+                  <p className="text-sm text-text-primary">
+                    {assignedToName || "Unassigned"}
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    {assignedToDepartment || "Department"}
+                  </p>
                 </div>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Priority</p>
                 <div className="mt-2">
                   <StatusBadge label={task.priority} />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</p>
+                <div className="mt-2">
+                  <StatusBadge label={task.status} />
                 </div>
               </div>
               <div>
@@ -152,25 +166,41 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
                 <p className="mt-2 text-sm text-text-primary">{formatDate(task.startDate)}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Last Remark</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Last Remark Date</p>
                 <p className="mt-2 text-sm text-text-primary">
-                  {task.lastRemark ||
-                    (task.lastRemarkAt ? formatDate(task.lastRemarkAt) : "-")}
+                  {task.lastRemarkAt ? formatDate(task.lastRemarkAt) : "-"}
                 </p>
               </div>
             </div>
           </div>
-
-          <TaskAttachmentsClient
-            taskId={task.id ?? task._id ?? taskId ?? ""}
-            initialAttachments={task.attachments}
-          />
         </div>
 
-        <TaskRemarksClient
-          taskId={task.id ?? task._id ?? taskId ?? ""}
-          initialRemarks={remarks}
-        />
+        <div className="rounded-xl bg-surface-card p-6 shadow-card">
+          <Tabs
+            items={[
+              {
+                key: "remarks",
+                label: "Remarks",
+                children: (
+                  <TaskRemarksClient
+                    taskId={task.id ?? task._id ?? taskId ?? ""}
+                    initialRemarks={remarks}
+                  />
+                )
+              },
+              {
+                key: "attachments",
+                label: "Attachments",
+                children: (
+                  <TaskAttachmentsClient
+                    taskId={task.id ?? task._id ?? taskId ?? ""}
+                    initialAttachments={task.attachments}
+                  />
+                )
+              }
+            ]}
+          />
+        </div>
       </div>
     </div>
   );

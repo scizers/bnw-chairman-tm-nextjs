@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Select, Upload } from "antd";
 import type { UploadFile, UploadRequestOption } from "antd/es/upload/interface";
 import type { Mom } from "@/types/mom";
-import { momsApi } from "@/lib/api";
+import { momsApi, teamMembersApi } from "@/lib/api";
 
 interface MomFormProps {
   value: MomFormState;
@@ -42,6 +42,10 @@ export default function MomForm({
   submitLabel = "Save",
   loading,
 }: MomFormProps) {
+  const [attendeeOptions, setAttendeeOptions] = useState<
+    Array<{ label: string; value: string }>
+  >([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
   const canSubmit = useMemo(() => {
     return value.title.trim() && value.meetingDate && value.rawNotes.trim();
   }, [value]);
@@ -83,6 +87,60 @@ export default function MomForm({
     }
   };
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadAttendees = async () => {
+      setLoadingOptions(true);
+      try {
+        const [teamMembers, moms] = await Promise.all([
+          teamMembersApi.list(),
+          momsApi.list(),
+        ]);
+        const names = new Map<string, string>();
+        const normalize = (name: string) => name.trim().toLowerCase();
+
+        teamMembers.forEach((member) => {
+          if (!member?.name) return;
+          const key = normalize(member.name);
+          if (!key) return;
+          if (!names.has(key)) {
+            names.set(key, member.name.trim());
+          }
+        });
+
+        moms.forEach((mom) => {
+          mom.attendees?.forEach((attendee) => {
+            if (!attendee) return;
+            const key = normalize(attendee);
+            if (!key) return;
+            if (!names.has(key)) {
+              names.set(key, attendee.trim());
+            }
+          });
+        });
+
+        if (!isMounted) return;
+        setAttendeeOptions(
+          Array.from(names.values())
+            .sort((a, b) => a.localeCompare(b))
+            .map((name) => ({ label: name, value: name }))
+        );
+      } catch {
+        if (!isMounted) return;
+        setAttendeeOptions([]);
+      } finally {
+        if (isMounted) {
+          setLoadingOptions(false);
+        }
+      }
+    };
+
+    loadAttendees();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="rounded-xl bg-surface-card p-6 shadow-card">
       <div className="grid gap-4 md:grid-cols-2">
@@ -112,6 +170,8 @@ export default function MomForm({
             value={value.attendees}
             onChange={(next) => onChange({ ...value, attendees: next })}
             placeholder="Add names"
+            options={attendeeOptions}
+            loading={loadingOptions}
             className="mt-2 w-full"
           />
         </div>

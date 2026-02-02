@@ -34,6 +34,7 @@ export default function TasksPageClient() {
     const status = searchParams.get("status");
     const priority = searchParams.get("priority");
     const member = searchParams.get("member");
+    const department = searchParams.get("department");
     const q = searchParams.get("q");
     const dueFrom = searchParams.get("dueFrom");
     const dueTo = searchParams.get("dueTo");
@@ -46,6 +47,7 @@ export default function TasksPageClient() {
     if (status && status !== "all") params.status = status;
     if (priority && priority !== "all") params.priority = priority;
     if (member && member !== "all") params.assignedTo = member;
+    if (department && department !== "all") params.department = department;
     if (q) params.q = q;
     if (dueFrom) params.dueFrom = dueFrom;
     if (dueTo) params.dueTo = dueTo;
@@ -110,10 +112,12 @@ export default function TasksPageClient() {
   const statusFilter = searchParams.get("status");
   const priorityFilter = searchParams.get("priority");
   const memberFilter = searchParams.get("member");
+  const departmentFilter = searchParams.get("department");
   const hasActiveFilters =
     (statusFilter && statusFilter !== "all") ||
     (priorityFilter && priorityFilter !== "all") ||
     (memberFilter && memberFilter !== "all") ||
+    (departmentFilter && departmentFilter !== "all") ||
     searchParams.get("q") ||
     searchParams.get("dueFrom") ||
     searchParams.get("dueTo");

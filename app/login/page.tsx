@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
-import { persistAuthToken } from "@/lib/auth/token";
+import { persistAuthSession } from "@/lib/auth/token";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,10 +19,11 @@ export default function LoginPage() {
     try {
       const response = await authApi.login({ email, password });
       const token = response?.token;
-      if (!token) {
+      const refreshToken = response?.refreshToken;
+      if (!token || !refreshToken) {
         throw new Error("Token missing from response.");
       }
-      persistAuthToken(token, response?.user);
+      persistAuthSession(token, refreshToken, response?.user);
       router.push("/dashboard");
     } catch (err) {
       setError("Login failed. Please verify your credentials.");

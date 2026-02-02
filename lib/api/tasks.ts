@@ -6,6 +6,7 @@ export interface TaskListQuery {
   status?: string;
   priority?: string;
   assignedTo?: string;
+  department?: string;
   q?: string;
   dueFrom?: string;
   dueTo?: string;

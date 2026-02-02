@@ -6,9 +6,15 @@ import MomForm, { buildMomPayload, MomFormState } from "@/components/moms/MomFor
 import { momsApi } from "@/lib/api";
 import ErrorState from "@/components/common/ErrorState";
 
+const todayLocal = () => {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+};
+
 const defaultForm: MomFormState = {
   title: "",
-  meetingDate: "",
+  meetingDate: todayLocal(),
   attendees: [],
   rawNotes: "",
   attachments: [],

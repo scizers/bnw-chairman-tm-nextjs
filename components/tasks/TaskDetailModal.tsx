@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Modal } from "antd";
+import { Modal, Tabs } from "antd";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import StatusBadge from "@/components/common/StatusBadge";
@@ -69,6 +69,14 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
     return member?.name ?? "";
   }, [task, teamMembers]);
 
+  const assignedToDepartment = useMemo(() => {
+    if (!task) return "";
+    const member = teamMembers.find(
+      (item) => resolveTeamMemberId(item) === task.assignedTo
+    );
+    return member?.department?.trim() ?? "";
+  }, [task, teamMembers]);
+
   return (
     <Modal
       open={open}
@@ -95,23 +103,28 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
             <p className="mt-2 text-sm text-text-muted">{task.description || "No description."}</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</p>
-              <p className="mt-2 text-sm text-text-primary">
-                {assignedToName || "Unassigned"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</p>
               <div className="mt-2">
-                <StatusBadge label={task.status} />
+                <p className="text-sm text-text-primary">
+                  {assignedToName || "Unassigned"}
+                </p>
+                <p className="text-xs text-text-muted">
+                  {assignedToDepartment || "Department"}
+                </p>
               </div>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Priority</p>
               <div className="mt-2">
                 <StatusBadge label={task.priority} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</p>
+              <div className="mt-2">
+                <StatusBadge label={task.status} />
               </div>
             </div>
             <div>
@@ -123,27 +136,40 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
               <p className="mt-2 text-sm text-text-primary">{formatDate(task.startDate)}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Last Remark</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Last Remark Date</p>
               <p className="mt-2 text-sm text-text-primary">
-                {task.lastRemark ||
-                  (task.lastRemarkAt ? formatDate(task.lastRemarkAt) : "-")}
+                {task.lastRemarkAt ? formatDate(task.lastRemarkAt) : "-"}
               </p>
             </div>
           </div>
 
           {resolvedTaskId ? (
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <TaskAttachmentsClient
-                key={`attachments-${resolvedTaskId}`}
-                taskId={resolvedTaskId}
-                initialAttachments={task.attachments}
-              />
-              <TaskRemarksClient
-                key={`remarks-${resolvedTaskId}`}
-                taskId={resolvedTaskId}
-                initialRemarks={remarks}
-              />
-            </div>
+            <Tabs
+              items={[
+                {
+                  key: "remarks",
+                  label: "Remarks",
+                  children: (
+                    <TaskRemarksClient
+                      key={`remarks-${resolvedTaskId}`}
+                      taskId={resolvedTaskId}
+                      initialRemarks={remarks}
+                    />
+                  )
+                },
+                {
+                  key: "attachments",
+                  label: "Attachments",
+                  children: (
+                    <TaskAttachmentsClient
+                      key={`attachments-${resolvedTaskId}`}
+                      taskId={resolvedTaskId}
+                      initialAttachments={task.attachments}
+                    />
+                  )
+                }
+              ]}
+            />
           ) : null}
         </div>
       )}

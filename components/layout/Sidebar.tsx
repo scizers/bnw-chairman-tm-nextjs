@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListTodo, Users, Settings, ClipboardList } from "lucide-react";
+import {
+  LayoutDashboard,
+  ListTodo,
+  Users,
+  Settings,
+  ClipboardList,
+  Building2
+} from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
@@ -10,6 +17,7 @@ const navItems = [
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/moms", label: "MOM", icon: ClipboardList },
   { href: "/team", label: "Team", icon: Users },
+  { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 

@@ -5,7 +5,9 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   token: string;
+  refreshToken?: string;
   expiresIn?: string;
+  refreshExpiresIn?: string;
   user?: {
     id?: string;
     _id?: string;
