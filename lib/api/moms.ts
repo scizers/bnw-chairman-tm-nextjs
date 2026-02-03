@@ -76,5 +76,25 @@ export const momsApi = {
   remove: async (momId: string) => {
     const { data } = await clientApi.delete<{ success: boolean }>(`/moms/${momId}`);
     return data;
+  },
+  generateMeetingBrief: async (momIds: string[]) => {
+    const { data } = await clientApi.post<{ summaryText: string }>(
+      "/mom/meeting-brief",
+      { momIds }
+    );
+    return data;
+  },
+  downloadMeetingBriefPdf: async (summaryText: string) => {
+    const response = await clientApi.post<Blob>(
+      "/mom/meeting-brief/pdf",
+      { summaryText },
+      { responseType: "blob" }
+    );
+    const disposition = response.headers?.["content-disposition"] ?? "";
+    const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+    return {
+      blob: response.data,
+      filename: match?.[1] || "meeting-brief.pdf"
+    };
   }
 };

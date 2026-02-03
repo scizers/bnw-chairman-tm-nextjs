@@ -12,6 +12,7 @@ import type { Mom } from "@/types/mom";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import { formatDate } from "@/lib/utils/format";
+import MeetingBriefModal from "@/components/MeetingBriefModal";
 
 const DEFAULT_PAGE_SIZE = 10;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -33,6 +34,9 @@ export default function MomsPageClient() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string>>([]);
+  const [briefOpen, setBriefOpen] = useState(false);
+  const [briefLoading, setBriefLoading] = useState(false);
   const [filters, setFilters] = useState({
     q: "",
     attendees: [] as string[],
@@ -58,6 +62,10 @@ export default function MomsPageClient() {
   }, [moms]);
 
   const sortValue = `${filters.sortBy}:${filters.sortDir}`;
+  const selectedMomIds = useMemo(
+    () => selectedRowKeys.map((key) => String(key)),
+    [selectedRowKeys]
+  );
 
   const load = async () => {
     if (!hasLoaded) setLoading(true);
@@ -209,6 +217,25 @@ export default function MomsPageClient() {
 
   return (
     <div className="space-y-4">
+      {selectedRowKeys.length ? (
+        <div className="sticky top-4 z-20 rounded-xl border border-border-subtle bg-surface-card/95 p-4 shadow-card backdrop-blur">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Selected</p>
+              <p className="text-sm text-text-primary">{selectedRowKeys.length} meetings</p>
+            </div>
+            <Button
+              type="primary"
+              onClick={() => setBriefOpen(true)}
+              disabled={briefLoading}
+              loading={briefLoading}
+            >
+              Generate Meeting Brief
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-text-muted">{totalMoms} meetings logged</p>
         <Link
@@ -281,6 +308,11 @@ export default function MomsPageClient() {
       <Table
         columns={columns}
         dataSource={moms}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys) => setSelectedRowKeys(keys.map(String)),
+          preserveSelectedRowKeys: true
+        }}
         rowKey={(record) => record.id ?? record._id ?? record.title}
         locale={{ emptyText: "No MOMs match the current filters." }}
         pagination={{
@@ -317,6 +349,13 @@ export default function MomsPageClient() {
             sortDir: nextSortDir
           }));
         }}
+      />
+
+      <MeetingBriefModal
+        open={briefOpen}
+        momIds={selectedMomIds}
+        onClose={() => setBriefOpen(false)}
+        onLoadingChange={setBriefLoading}
       />
     </div>
   );
