@@ -45,7 +45,9 @@ export default function TasksPageClient() {
       setError(null);
       try {
         const tasksPromise = tasksApi.listPaged(query);
-        const teamPromise = teamLoaded ? Promise.resolve(teamMembersRef.current) : teamMembersApi.list();
+        const teamPromise = teamLoaded
+          ? Promise.resolve(teamMembersRef.current)
+          : teamMembersApi.list();
         const [tasksResponse, teamData] = await Promise.all([tasksPromise, teamPromise]);
         if (!active) return;
         const normalizedTeam = teamData ?? [];
@@ -87,19 +89,37 @@ export default function TasksPageClient() {
 
   if (loading && !hasLoaded) {
     return (
-      <div className="rounded-xl bg-surface-card p-6 shadow-card">
-        <LoadingSkeleton lines={6} />
+      <div className="space-y-6">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Task Center</p>
+          <h2 className="mt-2 font-display text-3xl text-text-primary">Tasks (0)</h2>
+          <p className="mt-2 text-sm text-text-muted">
+            Review, prioritize, and act on your executive task inventory.
+          </p>
+        </div>
+        <div className="rounded-xl bg-surface-card p-6 shadow-card">
+          <LoadingSkeleton lines={6} />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <ErrorState
-        title="Task feed unavailable"
-        description={error}
-        onRetry={handleRetry}
-      />
+      <div className="space-y-6">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Task Center</p>
+          <h2 className="mt-2 font-display text-3xl text-text-primary">Tasks (0)</h2>
+          <p className="mt-2 text-sm text-text-muted">
+            Review, prioritize, and act on your executive task inventory.
+          </p>
+        </div>
+        <ErrorState
+          title="Task feed unavailable"
+          description={error}
+          onRetry={handleRetry}
+        />
+      </div>
     );
   }
 
@@ -115,21 +135,45 @@ export default function TasksPageClient() {
   const totalTasks = pagination?.total ?? tasks.length;
   if (!totalTasks && !hasActiveFilters) {
     return (
-      <EmptyState title="No tasks yet" description="Create tasks to begin tracking progress." />
+      <div className="space-y-6">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Task Center</p>
+          <h2 className="mt-2 font-display text-3xl text-text-primary">Tasks (0)</h2>
+          <p className="mt-2 text-sm text-text-muted">
+            Review, prioritize, and act on your executive task inventory.
+          </p>
+        </div>
+        <EmptyState
+          title="No tasks yet"
+          description="Create tasks to begin tracking progress."
+        />
+      </div>
     );
   }
 
   return (
-    <TasksTableClient
-      tasks={tasks}
-      teamMembers={teamMembers}
-      pagination={pagination ?? undefined}
-      loading={loading}
-      useUrlState={false}
-      page={query.page}
-      pageSize={query.pageSize}
-      initialQuery={query}
-      onQueryChange={handleQueryChange}
-    />
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Task Center</p>
+        <h2 className="mt-2 font-display text-3xl text-text-primary">
+          Tasks ({totalTasks})
+        </h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Review, prioritize, and act on your executive task inventory.
+        </p>
+      </div>
+
+      <TasksTableClient
+        tasks={tasks}
+        teamMembers={teamMembers}
+        pagination={pagination ?? undefined}
+        loading={loading}
+        useUrlState={false}
+        page={query.page}
+        pageSize={query.pageSize}
+        initialQuery={query}
+        onQueryChange={handleQueryChange}
+      />
+    </div>
   );
 }

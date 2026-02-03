@@ -16,6 +16,8 @@ export interface Task {
   description?: string;
   assignedTo?: string;
   assignedToName?: string;
+  createdBy?: string | { _id?: string; id?: string; name?: string };
+  createdByName?: string;
   status: TaskStatus;
   priority: TaskPriority;
   startDate?: string;

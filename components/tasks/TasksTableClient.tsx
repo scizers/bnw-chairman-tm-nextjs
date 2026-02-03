@@ -441,6 +441,14 @@ export default function TasksTableClient({
       }
     },
     {
+      key: "createdBy",
+      title: "Added By",
+      render: (row: Task) =>
+        row.createdByName ||
+        (typeof row.createdBy === "object" ? row.createdBy?.name : "") ||
+        "—"
+    },
+    {
       key: "status",
       title: "Status",
       render: (row: Task) => <StatusBadge label={row.status} />

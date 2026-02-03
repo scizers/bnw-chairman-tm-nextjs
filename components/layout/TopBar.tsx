@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, PlusCircle, UserCircle2 } from "lucide-react";
 import GlobalSearch from "@/components/common/GlobalSearch";
-import { clearAuthToken, getRefreshToken } from "@/lib/auth/token";
+import { clearAuthToken, getAuthProfile, getRefreshToken } from "@/lib/auth/token";
 import { authApi } from "@/lib/api";
 
 export default function TopBar() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [profileName, setProfileName] = useState("Account");
+
+  useEffect(() => {
+    const profile = getAuthProfile();
+    if (profile.name) {
+      setProfileName(profile.name);
+    }
+  }, []);
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle bg-surface-base/60 px-6 py-4 backdrop-blur">
@@ -32,7 +40,7 @@ export default function TopBar() {
             className="flex items-center gap-2 rounded-full border border-border-subtle px-3 py-2 text-sm text-text-muted hover:text-text-primary"
           >
             <UserCircle2 size={18} />
-            Chairman
+            {profileName}
           </button>
           {open ? (
             <div className="absolute right-0 z-30 mt-2 w-44 rounded-xl border border-border-subtle bg-surface-card p-2 shadow-card">

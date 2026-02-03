@@ -19,6 +19,7 @@ export default function TeamPageClient() {
     pageSize: 20
   });
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const queryKey = useMemo(() => JSON.stringify(query), [query]);
   const queryRef = useRef(query);
@@ -38,6 +39,7 @@ export default function TeamPageClient() {
       setError("Unable to load team data.");
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   }, []);
 
@@ -48,7 +50,7 @@ export default function TeamPageClient() {
     return () => clearTimeout(timer);
   }, [queryKey, load]);
 
-  if (loading) {
+  if (loading && !hasLoaded) {
     return (
       <div className="rounded-xl bg-surface-card p-6 shadow-card">
         <LoadingSkeleton lines={6} />

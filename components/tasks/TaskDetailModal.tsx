@@ -77,6 +77,7 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
     return member?.department?.trim() ?? "";
   }, [task, teamMembers]);
 
+
   return (
     <Modal
       open={open}
@@ -114,6 +115,12 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
                   {assignedToDepartment || "Department"}
                 </p>
               </div>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Added By</p>
+              <p className="mt-2 text-sm text-text-primary">
+                {task.addedByName || "—"}
+              </p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Priority</p>
