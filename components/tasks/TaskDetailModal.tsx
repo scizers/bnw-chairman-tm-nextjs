@@ -119,7 +119,9 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Added By</p>
               <p className="mt-2 text-sm text-text-primary">
-                {task.addedByName || "—"}
+                {task.createdByName ||
+                  (typeof task.createdBy === "object" ? task.createdBy?.name : "") ||
+                  "—"}
               </p>
             </div>
             <div>
