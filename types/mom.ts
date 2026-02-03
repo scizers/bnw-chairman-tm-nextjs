@@ -1,5 +1,11 @@
+export type MomAttachmentKind = "image" | "pdf" | "word" | "excel" | "other";
+
 export interface MomAttachment {
   fileUrl: string;
+  thumbnailUrl?: string;
+  mimeType?: string;
+  fileName?: string;
+  fileKind?: MomAttachmentKind;
   uploadedAt?: string;
 }
 

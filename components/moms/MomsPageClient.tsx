@@ -137,7 +137,7 @@ export default function MomsPageClient() {
             ? "ascend"
             : "descend"
           : null,
-      render: (row: Mom) => {
+      render: (_value: Mom["title"], row: Mom) => {
         const id = row.id ?? row._id ?? "";
         return (
           <div>
@@ -160,12 +160,12 @@ export default function MomsPageClient() {
             ? "ascend"
             : "descend"
           : null,
-      render: (row: Mom) => formatDate(row.meetingDate)
+      render: (_value: Mom["meetingDate"], row: Mom) => formatDate(row.meetingDate)
     },
     {
       key: "attendees",
       title: "Attendees",
-      render: (row: Mom) => (
+      render: (_value: Mom["attendees"], row: Mom) => (
         <span className="text-sm text-text-primary">
           {row.attendees?.length ? row.attendees.join(", ") : "—"}
         </span>
@@ -182,12 +182,12 @@ export default function MomsPageClient() {
             ? "ascend"
             : "descend"
           : null,
-      render: (row: Mom) => formatDate(row.createdAt)
+      render: (_value: Mom["createdAt"], row: Mom) => formatDate(row.createdAt)
     },
     {
       key: "actions",
       title: "Actions",
-      render: (row: Mom) => {
+      render: (_value: unknown, row: Mom) => {
         const id = row.id ?? row._id ?? "";
         return (
           <Space size="small">

@@ -55,18 +55,22 @@ export const momsApi = {
   uploadAttachment: async (file: File, onProgress?: (percent: number) => void) => {
     const form = new FormData();
     form.append("file", file);
-    const { data } = await clientApi.post<{ url: string; mimeType: string }>(
-      "/uploads/moms",
-      form,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (event) => {
-          if (!event.total) return;
-          const percent = Math.round((event.loaded / event.total) * 100);
-          onProgress?.(percent);
-        }
+    const { data } = await clientApi.post<{
+      url: string;
+      thumbnailUrl?: string | null;
+      mimeType?: string;
+      size?: number;
+      filename?: string;
+      originalName?: string;
+      fileKind?: string;
+    }>("/uploads/moms", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (event) => {
+        if (!event.total) return;
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress?.(percent);
       }
-    );
+    });
     return data;
   },
   remove: async (momId: string) => {
