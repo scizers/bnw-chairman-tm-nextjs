@@ -1,9 +1,33 @@
 import { clientApi } from "@/lib/api/client";
 import type { TeamMember } from "@/types/team";
 
+export interface TeamMemberListQuery {
+  name?: string;
+  designation?: string;
+  sortBy?: "name" | "designation" | "createdAt";
+  sortDir?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface TeamMemberListMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export const teamMembersApi = {
   list: async () => {
     const { data } = await clientApi.get<TeamMember[]>("/team-members");
+    return data;
+  },
+  listPaged: async (query: TeamMemberListQuery) => {
+    const { data } = await clientApi.get<{ data: TeamMember[]; meta: TeamMemberListMeta }>(
+      "/team-members",
+      {
+        params: query
+      }
+    );
     return data;
   },
   getById: async (teamMemberId: string) => {

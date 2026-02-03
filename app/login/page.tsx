@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { persistAuthSession } from "@/lib/auth/token";
@@ -12,8 +12,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isEmailValid = useMemo(() => {
+    const trimmed = email.trim();
+    if (!trimmed) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  }, [email]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!isEmailValid) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -52,6 +62,9 @@ export default function LoginPage() {
               placeholder="chairman@office.local"
               required
             />
+            {email.trim().length > 0 && !isEmailValid ? (
+              <p className="mt-2 text-xs text-rose-300">Enter a valid email address.</p>
+            ) : null}
           </div>
           <div>
             <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Password</label>
@@ -71,7 +84,7 @@ export default function LoginPage() {
           ) : null}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !isEmailValid}
             className="w-full rounded-full bg-brand-primary py-3 text-sm font-semibold text-black shadow-soft transition hover:brightness-110 disabled:opacity-60"
           >
             {loading ? "Signing in..." : "Login"}

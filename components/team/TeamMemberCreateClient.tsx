@@ -1,29 +1,68 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Select } from "antd";
 import ErrorState from "@/components/common/ErrorState";
-import { teamMembersApi } from "@/lib/api";
+import { departmentsApi, teamMembersApi } from "@/lib/api";
+import type { Department } from "@/types/department";
 
 export default function TeamMemberCreateClient() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [form, setForm] = useState({
     name: "",
     designation: "",
-    department: "",
+    departmentId: "",
     email: "",
     isActive: true
   });
+
+  const isEmailValid = useMemo(() => {
+    const email = form.email.trim();
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }, [form.email]);
 
   const canSubmit = useMemo(() => {
     return (
       form.name.trim().length > 0 &&
       form.designation.trim().length > 0 &&
-      form.email.trim().length > 0
+      isEmailValid &&
+      form.departmentId.trim().length > 0
     );
-  }, [form]);
+  }, [form, isEmailValid]);
+
+  useEffect(() => {
+    let active = true;
+    const loadDepartments = async () => {
+      setLoadingDepartments(true);
+      try {
+        let data = await departmentsApi.listAll();
+        if (!data?.length) {
+          const summary = await departmentsApi.list();
+          data =
+            summary?.map((dept) => ({
+              _id: dept.id ?? dept._id,
+              name: dept.department
+            })) ?? [];
+        }
+        if (!active) return;
+        setDepartments(data ?? []);
+      } catch {
+        if (active) setDepartments([]);
+      } finally {
+        if (active) setLoadingDepartments(false);
+      }
+    };
+    void loadDepartments();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSave = async () => {
     if (!canSubmit) return;
@@ -33,7 +72,7 @@ export default function TeamMemberCreateClient() {
       const created = await teamMembersApi.create({
         name: form.name.trim(),
         designation: form.designation.trim(),
-        department: form.department.trim() || undefined,
+        departmentId: form.departmentId,
         email: form.email.trim(),
         isActive: form.isActive
       });
@@ -73,10 +112,21 @@ export default function TeamMemberCreateClient() {
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Department</label>
-          <input
-            value={form.department}
-            onChange={(event) => setForm((prev) => ({ ...prev, department: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+          <Select
+            value={form.departmentId || undefined}
+            onChange={(value) => setForm((prev) => ({ ...prev, departmentId: value }))}
+            showSearch
+            optionFilterProp="label"
+            options={departments
+              .map((dept) => ({
+                value: String(dept.id ?? dept._id ?? ""),
+                label: dept.name
+              }))
+              .filter((option) => option.value)}
+            placeholder="Select department"
+            loading={loadingDepartments}
+            size="large"
+            className="mt-2 w-full rounded-xl"
           />
         </div>
         <div>
@@ -87,6 +137,9 @@ export default function TeamMemberCreateClient() {
             onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
             className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
           />
+          {form.email.trim().length > 0 && !isEmailValid ? (
+            <p className="mt-2 text-xs text-rose-300">Enter a valid email address.</p>
+          ) : null}
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Active</label>

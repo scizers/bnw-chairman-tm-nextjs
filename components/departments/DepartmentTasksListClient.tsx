@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import TasksTableClient from "@/components/tasks/TasksTableClient";
 import ErrorState from "@/components/common/ErrorState";
 import { tasksApi } from "@/lib/api";
@@ -13,6 +12,7 @@ import { attachAssigneeNames, normalizeTasks } from "@/lib/utils/task";
 interface DepartmentTasksListClientProps {
   department: string;
   teamMembers: TeamMember[];
+  statusFilter?: string[];
   onViewTask: (taskId: string) => void;
   onEditTask: (taskId: string) => void;
 }
@@ -22,28 +22,38 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 export default function DepartmentTasksListClient({
   department,
   teamMembers,
+  statusFilter,
   onViewTask,
   onEditTask
 }: DepartmentTasksListClientProps) {
-  const searchParams = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pagination, setPagination] = useState<TaskListMeta | null>(null);
+  const [query, setQuery] = useState<TaskListQuery>({
+    sortBy: "updatedAt",
+    sortDir: "desc",
+    page: 1,
+    pageSize: 10
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const query = useMemo(() => {
-    const params: TaskListQuery = {};
-    const status = searchParams.get("status");
-    const priority = searchParams.get("priority");
-    const q = searchParams.get("q");
-    const dueFrom = searchParams.get("dueFrom");
-    const dueTo = searchParams.get("dueTo");
-    const sortBy = searchParams.get("sortBy") ?? "updatedAt";
-    const sortDir = searchParams.get("sortDir") ?? "desc";
-    const page = Number(searchParams.get("page") ?? "1");
-    const rawPageSize = Number(searchParams.get("pageSize") ?? "10");
-    const pageSize = PAGE_SIZE_OPTIONS.includes(rawPageSize) ? rawPageSize : 10;
+  useEffect(() => {
+    setQuery((prev) => ({
+      ...prev,
+      status: statusFilter?.length ? statusFilter.join(",") : undefined,
+      page: 1
+    }));
+  }, [statusFilter]);
 
+  const apiQuery = useMemo(() => {
+    const params: TaskListQuery = {};
+    const status = query.status ?? null;
+    const priority = query.priority ?? null;
+    const q = query.q ?? null;
+    const dueFrom = query.dueFrom ?? null;
+    const dueTo = query.dueTo ?? null;
+    const sortBy = query.sortBy ?? "updatedAt";
+    const sortDir = query.sortDir ?? "desc";
     params.department = department;
     if (status) params.status = status;
     if (priority) params.priority = priority;
@@ -52,17 +62,17 @@ export default function DepartmentTasksListClient({
     if (dueTo) params.dueTo = dueTo;
     params.sortBy = sortBy;
     params.sortDir = sortDir;
-    params.page = Number.isFinite(page) && page > 0 ? page : 1;
-    params.pageSize = pageSize;
+    params.page = query.page ?? 1;
+    params.pageSize = query.pageSize ?? 10;
 
     return params;
-  }, [searchParams, department]);
+  }, [department, query]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await tasksApi.listPaged(query);
+      const response = await tasksApi.listPaged(apiQuery);
       const normalizedTasks = attachAssigneeNames(
         normalizeTasks(response?.data ?? []),
         teamMembers
@@ -74,7 +84,7 @@ export default function DepartmentTasksListClient({
     } finally {
       setLoading(false);
     }
-  }, [query, teamMembers]);
+  }, [apiQuery, teamMembers]);
 
   useEffect(() => {
     void load();
@@ -92,6 +102,11 @@ export default function DepartmentTasksListClient({
       loading={loading}
       hideDepartmentFilter
       fixedDepartment={department}
+      forcedStatusFilter={statusFilter}
+      useUrlState={false}
+      page={query.page}
+      pageSize={query.pageSize}
+      onQueryChange={(nextQuery) => setQuery(nextQuery)}
       onViewTask={onViewTask}
       onEditTask={onEditTask}
     />

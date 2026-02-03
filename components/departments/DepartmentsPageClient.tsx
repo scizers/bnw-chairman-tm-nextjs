@@ -42,10 +42,10 @@ export default function DepartmentsPageClient() {
         const normalizedQuery = queryRef.current;
         const searchQuery = normalizedQuery.q?.trim().toLowerCase() ?? "";
         const filtered = searchQuery
-            ? response.filter((dept) =>
-                dept.department.toLowerCase().includes(searchQuery)
+          ? response.filter((dept) =>
+              dept.department.toLowerCase().includes(searchQuery)
             )
-            : response;
+          : response;
         const sortField = normalizedQuery.sortBy ?? "department";
         const sortDir = normalizedQuery.sortDir ?? "asc";
         const sorted = [...filtered].sort((a, b) => {
@@ -87,9 +87,9 @@ export default function DepartmentsPageClient() {
 
   if (loading && !hasLoaded) {
     return (
-        <div className="rounded-xl bg-surface-card p-6 shadow-card">
-          <LoadingSkeleton lines={6} />
-        </div>
+      <div className="rounded-xl bg-surface-card p-6 shadow-card">
+        <LoadingSkeleton lines={6} />
+      </div>
     );
   }
 
@@ -101,10 +101,10 @@ export default function DepartmentsPageClient() {
 
   if (!departments.length && !hasActiveFilters) {
     return (
-        <EmptyState
-            title="No departments yet"
-            description="Add team members with departments to see the breakdown."
-        />
+      <EmptyState
+        title="No departments yet"
+        description="Add team members with departments to see the breakdown."
+      />
     );
   }
 
@@ -115,16 +115,16 @@ export default function DepartmentsPageClient() {
       dataIndex: "department",
       sorter: true,
       sortOrder:
-          query.sortBy === "department"
-              ? query.sortDir === "asc"
-                  ? "ascend"
-                  : "descend"
-              : null,
+        query.sortBy === "department"
+          ? query.sortDir === "asc"
+            ? "ascend"
+            : "descend"
+          : null,
       render: (value: string) => (
-          <div>
-            <p className="font-semibold text-text-primary">{value}</p>
-            <p className="text-xs text-text-muted">Department</p>
-          </div>
+        <div>
+          <p className="font-semibold text-text-primary">{value}</p>
+          <p className="text-xs text-text-muted">Department</p>
+        </div>
       )
     },
     {
@@ -133,11 +133,11 @@ export default function DepartmentsPageClient() {
       dataIndex: "memberCount",
       sorter: true,
       sortOrder:
-          query.sortBy === "memberCount"
-              ? query.sortDir === "asc"
-                  ? "ascend"
-                  : "descend"
-              : null
+        query.sortBy === "memberCount"
+          ? query.sortDir === "asc"
+            ? "ascend"
+            : "descend"
+          : null
     },
     {
       key: "taskCount",
@@ -145,11 +145,11 @@ export default function DepartmentsPageClient() {
       dataIndex: "taskCount",
       sorter: true,
       sortOrder:
-          query.sortBy === "taskCount"
-              ? query.sortDir === "asc"
-                  ? "ascend"
-                  : "descend"
-              : null
+        query.sortBy === "taskCount"
+          ? query.sortDir === "asc"
+            ? "ascend"
+            : "descend"
+          : null
     },
     {
       key: "openTasks",
@@ -157,11 +157,11 @@ export default function DepartmentsPageClient() {
       dataIndex: "openTasks",
       sorter: true,
       sortOrder:
-          query.sortBy === "openTasks"
-              ? query.sortDir === "asc"
-                  ? "ascend"
-                  : "descend"
-              : null
+        query.sortBy === "openTasks"
+          ? query.sortDir === "asc"
+            ? "ascend"
+            : "descend"
+          : null
     },
     {
       key: "overdueTasks",
@@ -169,86 +169,86 @@ export default function DepartmentsPageClient() {
       dataIndex: "overdueTasks",
       sorter: true,
       sortOrder:
-          query.sortBy === "overdueTasks"
-              ? query.sortDir === "asc"
-                  ? "ascend"
-                  : "descend"
-              : null,
+        query.sortBy === "overdueTasks"
+          ? query.sortDir === "asc"
+            ? "ascend"
+            : "descend"
+          : null,
       render: (value: number) => <StatusBadge label={String(value ?? 0)} />
     }
   ];
 
   return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-3">
-          <Input
-              value={search}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSearch(value);
-                const trimmed = value.trim();
-                setQuery((prev) => ({
-                  ...prev,
-                  q: trimmed || undefined,
-                  page: 1
-                }));
-              }}
-              allowClear
-              placeholder="Search department"
-              className="min-w-[220px] flex-1"
-          />
-        </div>
-
-        <Table
-            columns={columns}
-            dataSource={departments}
-            rowKey={(record) => record.department}
-            pagination={{
-              current: pagination?.page ?? query.page ?? 1,
-              pageSize: pagination?.pageSize ?? query.pageSize ?? 20,
-              total: pagination?.total ?? departments.length,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              showTotal: (total, range) => `Showing ${range[0]}-${range[1]} of ${total}`
-            }}
-            loading={loading}
-            rowClassName={() => "cursor-pointer"}
-            style={{
-              opacity: loading ? 0.9 : 1,
-              transition: "opacity 0.2s ease"
-            }}
-            onRow={(record) => ({
-              onClick: () => {
-                router.push(`/departments/${encodeURIComponent(record.department)}`);
-              }
-            })}
-            onChange={(pager, _filters, sorter) => {
-              const nextPage = pager.current ?? 1;
-              const nextPageSize = pager.pageSize ?? 20;
-              const normalizedSorter = Array.isArray(sorter) ? sorter[0] : sorter;
-              const sorterKey =
-                  typeof normalizedSorter?.columnKey === "string"
-                      ? normalizedSorter.columnKey
-                      : null;
-              const sorterOrder = normalizedSorter?.order;
-
-              setQuery((prev) => ({
-                ...prev,
-                page: nextPageSize !== prev.pageSize ? 1 : nextPage,
-                pageSize: nextPageSize,
-                sortBy:
-                    sorterOrder &&
-                    (sorterKey === "department" ||
-                        sorterKey === "memberCount" ||
-                        sorterKey === "taskCount" ||
-                        sorterKey === "openTasks" ||
-                        sorterKey === "overdueTasks")
-                        ? sorterKey
-                        : prev.sortBy,
-                sortDir: sorterOrder ? (sorterOrder === "ascend" ? "asc" : "desc") : prev.sortDir
-              }));
-            }}
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        <Input
+          value={search}
+          onChange={(event) => {
+            const value = event.target.value;
+            setSearch(value);
+            const trimmed = value.trim();
+            setQuery((prev) => ({
+              ...prev,
+              q: trimmed || undefined,
+              page: 1
+            }));
+          }}
+          allowClear
+          placeholder="Search department"
+          className="min-w-[220px] flex-1"
         />
       </div>
+
+      <Table
+        columns={columns}
+        dataSource={departments}
+        rowKey={(record) => record.department}
+        pagination={{
+          current: pagination?.page ?? query.page ?? 1,
+          pageSize: pagination?.pageSize ?? query.pageSize ?? 20,
+          total: pagination?.total ?? departments.length,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50", "100"],
+          showTotal: (total, range) => `Showing ${range[0]}-${range[1]} of ${total}`
+        }}
+        loading={loading}
+        rowClassName={() => "cursor-pointer"}
+        style={{
+          opacity: loading ? 0.9 : 1,
+          transition: "opacity 0.2s ease"
+        }}
+        onRow={(record) => ({
+          onClick: () => {
+            router.push(`/departments/${encodeURIComponent(record.department)}`);
+          }
+        })}
+        onChange={(pager, _filters, sorter) => {
+          const nextPage = pager.current ?? 1;
+          const nextPageSize = pager.pageSize ?? 20;
+          const normalizedSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+          const sorterKey =
+            typeof normalizedSorter?.columnKey === "string"
+              ? normalizedSorter.columnKey
+              : null;
+          const sorterOrder = normalizedSorter?.order;
+
+          setQuery((prev) => ({
+            ...prev,
+            page: nextPageSize !== prev.pageSize ? 1 : nextPage,
+            pageSize: nextPageSize,
+            sortBy:
+              sorterOrder &&
+              (sorterKey === "department" ||
+                sorterKey === "memberCount" ||
+                sorterKey === "taskCount" ||
+                sorterKey === "openTasks" ||
+                sorterKey === "overdueTasks")
+                ? sorterKey
+                : prev.sortBy,
+            sortDir: sorterOrder ? (sorterOrder === "ascend" ? "asc" : "desc") : prev.sortDir
+          }));
+        }}
+      />
+    </div>
   );
 }
