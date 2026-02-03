@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Button, Space, Table } from "antd";
+import { Button, Space, Table, Tooltip } from "antd";
+import { EditOutlined, EyeOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { SorterResult } from "antd/es/table/interface";
 import StatusBadge from "@/components/common/StatusBadge";
@@ -99,26 +100,28 @@ export default function TeamMemberTasksTable({
       title: "Actions",
       render: (row: Task) => (
         <Space size="small">
-          <Button
-            type="link"
-            onClick={(event) => {
-              event.stopPropagation();
-              const id = row.id ?? row._id;
-              if (id) onView(id);
-            }}
-          >
-            View
-          </Button>
-          <Button
-            type="link"
-            onClick={(event) => {
-              event.stopPropagation();
-              const id = row.id ?? row._id;
-              if (id) onEdit(id);
-            }}
-          >
-            Edit
-          </Button>
+          <Tooltip title="View">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={(event) => {
+                event.stopPropagation();
+                const id = row.id ?? row._id;
+                if (id) onView(id);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Edit">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={(event) => {
+                event.stopPropagation();
+                const id = row.id ?? row._id;
+                if (id) onEdit(id);
+              }}
+            />
+          </Tooltip>
         </Space>
       )
     }

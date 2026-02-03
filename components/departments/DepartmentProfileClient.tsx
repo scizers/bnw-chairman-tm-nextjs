@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
@@ -30,7 +30,7 @@ export default function DepartmentProfileClient({
   department
 }: DepartmentProfileClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [summary, setSummary] = useState<DepartmentSummary | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [stats, setStats] = useState({
@@ -95,26 +95,18 @@ export default function DepartmentProfileClient({
     };
   }, [department]);
 
-  const activeStatuses = useMemo(
-    () => parseListParam(searchParams.get("status")),
-    [searchParams]
-  );
+  useEffect(() => {
+    router.replace(pathname, { scroll: false });
+  }, [pathname, router]);
+
+  const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
 
   const updateStatusFilter = (status?: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (!status) {
-      params.delete("status");
-    } else {
-      const current = parseListParam(params.get("status"));
-      if (current.length === 1 && current[0] === status) {
-        params.delete("status");
-      } else {
-        params.set("status", status);
-      }
-    }
-    params.set("page", "1");
-    const nextQuery = params.toString();
-    router.replace(nextQuery ? `?${nextQuery}` : "?", { scroll: false });
+    setActiveStatuses((current) => {
+      if (!status) return [];
+      if (current.length === 1 && current[0] === status) return [];
+      return [status];
+    });
   };
 
   if (loading) {
@@ -211,6 +203,7 @@ export default function DepartmentProfileClient({
       <DepartmentTasksListClient
         department={department}
         teamMembers={teamMembers}
+        statusFilter={activeStatuses}
         onViewTask={(taskId) => setActiveTaskId(taskId)}
         onEditTask={(taskId) => router.push(`/tasks/${taskId}/edit`)}
       />

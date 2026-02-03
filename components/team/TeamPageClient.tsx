@@ -1,31 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import TeamTableClient from "@/components/team/TeamTableClient";
-import { tasksApi, teamMembersApi } from "@/lib/api";
-import type { Task } from "@/types/task";
+import { teamMembersApi } from "@/lib/api";
 import type { TeamMember } from "@/types/team";
-import { resolveTeamMemberId } from "@/lib/utils/task";
+import type { TeamMemberListMeta, TeamMemberListQuery } from "@/lib/api/teamMembers";
 
 export default function TeamPageClient() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [pagination, setPagination] = useState<TeamMemberListMeta | null>(null);
+  const [query, setQuery] = useState<TeamMemberListQuery>({
+    sortBy: "createdAt",
+    sortDir: "desc",
+    page: 1,
+    pageSize: 20
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const queryKey = useMemo(() => JSON.stringify(query), [query]);
+  const queryRef = useRef(query);
+
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [teamData, tasksData] = await Promise.all([
-        teamMembersApi.list(),
-        tasksApi.list()
-      ]);
-      setTeamMembers(teamData ?? []);
-      setTasks(tasksData ?? []);
+      const response = await teamMembersApi.listPaged(queryRef.current);
+      setTeamMembers(response?.data ?? []);
+      setPagination(response?.meta ?? null);
     } catch (err) {
       setError("Unable to load team data.");
     } finally {
@@ -34,8 +42,11 @@ export default function TeamPageClient() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const timer = setTimeout(() => {
+      void load();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [queryKey, load]);
 
   if (loading) {
     return (
@@ -49,25 +60,27 @@ export default function TeamPageClient() {
     return <ErrorState title="Team feed unavailable" description={error} onRetry={load} />;
   }
 
-  const teamWithCounts = teamMembers.map((member) => {
-    const id = resolveTeamMemberId(member);
-    const assigned = tasks.filter((task) => task.assignedTo === id);
-    const openTasks = assigned.filter((task) =>
-      ["open", "in_progress"].includes(task.status)
-    ).length;
-    const overdueTasks = assigned.filter((task) => task.status === "overdue").length;
+  const hasActiveFilters = Boolean(query.name?.trim()) || Boolean(query.designation?.trim());
 
-    return {
-      ...member,
-      id,
-      openTasks: member.openTasks ?? openTasks,
-      overdueTasks: member.overdueTasks ?? overdueTasks
-    };
-  });
+  if (!teamMembers.length && !hasActiveFilters) {
+    return (
+      <EmptyState
+        title="No team members"
+        description="Add team members to monitor tasks."
+      />
+    );
+  }
 
-  return teamWithCounts.length ? (
-    <TeamTableClient teamMembers={teamWithCounts} />
-  ) : (
-    <EmptyState title="No team members" description="Add team members to monitor tasks." />
+  return (
+    <TeamTableClient
+      teamMembers={teamMembers}
+      pagination={pagination ?? undefined}
+      loading={loading}
+      query={query}
+      onQueryChange={(nextQuery) => {
+        const nextKey = JSON.stringify(nextQuery);
+        setQuery((prev) => (JSON.stringify(prev) === nextKey ? prev : nextQuery));
+      }}
+    />
   );
 }

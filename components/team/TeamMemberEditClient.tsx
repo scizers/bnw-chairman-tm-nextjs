@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Select } from "antd";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
-import { teamMembersApi } from "@/lib/api";
+import { departmentsApi, teamMembersApi } from "@/lib/api";
+import type { Department } from "@/types/department";
 import type { TeamMember } from "@/types/team";
 
 interface TeamMemberEditClientProps {
@@ -17,14 +19,22 @@ export default function TeamMemberEditClient({ teamMemberId }: TeamMemberEditCli
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     designation: "",
-    department: "",
+    departmentId: "",
     email: "",
     isActive: true
   });
+
+  const isEmailValid = useMemo(() => {
+    const trimmed = form.email.trim();
+    if (!trimmed) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  }, [form.email]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,22 +55,68 @@ export default function TeamMemberEditClient({ teamMemberId }: TeamMemberEditCli
 
   useEffect(() => {
     if (!member) return;
+    const deptValue = member.departmentId as unknown as
+      | { _id?: string; id?: string }
+      | string
+      | undefined;
+    const resolvedDepartmentId =
+      typeof deptValue === "string" ? deptValue : String(deptValue?._id ?? deptValue?.id ?? "");
     setForm({
       name: member.name ?? "",
       designation: member.designation ?? "",
-      department: member.department ?? "",
+      departmentId: resolvedDepartmentId,
       email: member.email ?? "",
       isActive: member.isActive ?? true
     });
   }, [member]);
 
+  useEffect(() => {
+    let active = true;
+    const loadDepartments = async () => {
+      setLoadingDepartments(true);
+      try {
+        let data = await departmentsApi.listAll();
+        if (!data?.length) {
+          const summary = await departmentsApi.list();
+          data =
+            summary?.map((dept) => ({
+              _id: dept.id ?? dept._id,
+              name: dept.department
+            })) ?? [];
+        }
+        if (!active) return;
+        setDepartments(data ?? []);
+      } catch {
+        if (active) setDepartments([]);
+      } finally {
+        if (active) setLoadingDepartments(false);
+      }
+    };
+    void loadDepartments();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!member) return;
+    if (form.departmentId) return;
+    if (!member.department || !departments.length) return;
+    const matched = departments.find(
+      (dept) => dept.name?.trim() === member.department?.trim()
+    );
+    if (!matched) return;
+    setForm((prev) => ({ ...prev, departmentId: String(matched.id ?? matched._id ?? "") }));
+  }, [member, departments, form.departmentId]);
+
   const canSubmit = useMemo(() => {
     return (
       form.name.trim().length > 0 &&
       form.designation.trim().length > 0 &&
-      form.email.trim().length > 0
+      isEmailValid &&
+      String(form.departmentId || "").trim().length > 0
     );
-  }, [form]);
+  }, [form, isEmailValid]);
 
   const handleSave = async () => {
     if (!canSubmit) return;
@@ -70,7 +126,7 @@ export default function TeamMemberEditClient({ teamMemberId }: TeamMemberEditCli
       await teamMembersApi.update(teamMemberId, {
         name: form.name.trim(),
         designation: form.designation.trim(),
-        department: form.department.trim() || undefined,
+        departmentId: String(form.departmentId || "").trim() || undefined,
         email: form.email.trim(),
         isActive: form.isActive
       });
@@ -119,10 +175,23 @@ export default function TeamMemberEditClient({ teamMemberId }: TeamMemberEditCli
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Department</label>
-          <input
-            value={form.department}
-            onChange={(event) => setForm((prev) => ({ ...prev, department: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+          <Select
+            value={form.departmentId || undefined}
+            onChange={(value) =>
+              setForm((prev) => ({ ...prev, departmentId: value ? String(value) : "" }))
+            }
+            showSearch
+            optionFilterProp="label"
+            options={departments
+              .map((dept) => ({
+                value: String(dept.id ?? dept._id ?? ""),
+                label: dept.name
+              }))
+              .filter((option) => option.value)}
+            placeholder="Select department"
+            loading={loadingDepartments}
+            size="large"
+            className="mt-2 w-full rounded-xl"
           />
         </div>
         <div>
@@ -133,6 +202,9 @@ export default function TeamMemberEditClient({ teamMemberId }: TeamMemberEditCli
             onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
             className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
           />
+          {form.email.trim().length > 0 && !isEmailValid ? (
+            <p className="mt-2 text-xs text-rose-300">Enter a valid email address.</p>
+          ) : null}
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Active</label>

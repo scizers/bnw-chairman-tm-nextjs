@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Button, DatePicker, Input, Select, Space, Table } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Button, DatePicker, Input, Select, Space, Table, Tooltip } from "antd";
+import { EditOutlined, EyeOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { SorterResult } from "antd/es/table/interface";
 import dayjs from "dayjs";
@@ -10,7 +11,7 @@ import StatusBadge from "@/components/common/StatusBadge";
 import type { Task } from "@/types/task";
 import type { TeamMember } from "@/types/team";
 import { formatDate, formatRelative } from "@/lib/utils/format";
-import type { TaskListMeta } from "@/lib/api/tasks";
+import type { TaskListMeta, TaskListQuery } from "@/lib/api/tasks";
 import { resolveTeamMemberId } from "@/lib/utils/task";
 
 interface TasksTableClientProps {
@@ -22,6 +23,14 @@ interface TasksTableClientProps {
   hideDepartmentFilter?: boolean;
   fixedMemberIds?: string[];
   fixedDepartment?: string;
+  forcedStatusFilter?: string[];
+  departmentOptionsOverride?: Array<{ value: string; label: string }>;
+  useUrlState?: boolean;
+  page?: number;
+  pageSize?: number;
+  onPageChange?: (page: number, pageSize: number) => void;
+  initialQuery?: TaskListQuery;
+  onQueryChange?: (query: TaskListQuery) => void;
   onViewTask?: (taskId: string) => void;
   onEditTask?: (taskId: string) => void;
 }
@@ -68,11 +77,20 @@ export default function TasksTableClient({
   hideDepartmentFilter,
   fixedMemberIds,
   fixedDepartment,
+  forcedStatusFilter,
+  departmentOptionsOverride,
+  useUrlState = true,
+  page: controlledPage,
+  pageSize: controlledPageSize,
+  onPageChange,
+  initialQuery,
+  onQueryChange,
   onViewTask,
   onEditTask
 }: TasksTableClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const searchParamsString = searchParams.toString();
   const lockedMemberIds = useMemo(
     () => (fixedMemberIds ? normalizeList(fixedMemberIds) : null),
@@ -83,32 +101,55 @@ export default function TasksTableClient({
     return value ? [value] : null;
   }, [fixedDepartment]);
   const [statusFilter, setStatusFilter] = useState<string[]>(() =>
-    parseListParam(searchParams.get("status"))
+    useUrlState
+      ? parseListParam(searchParams.get("status"))
+      : parseListParam(forcedStatusFilter?.join(",") ?? "")
   );
   const [priorityFilter, setPriorityFilter] = useState<string[]>(() =>
-    parseListParam(searchParams.get("priority"))
+    useUrlState
+      ? parseListParam(searchParams.get("priority"))
+      : []
   );
   const [memberFilter, setMemberFilter] = useState<string[]>(() =>
-    lockedMemberIds ?? parseListParam(searchParams.get("member"))
+    lockedMemberIds ??
+    (useUrlState ? parseListParam(searchParams.get("member")) : [])
   );
   const [departmentFilter, setDepartmentFilter] = useState<string[]>(() =>
-    lockedDepartment ?? parseListParam(searchParams.get("department"))
+    lockedDepartment ??
+    (useUrlState ? parseListParam(searchParams.get("department")) : [])
   );
-  const [titleQuery, setTitleQuery] = useState(() => searchParams.get("q") ?? "");
-  const [dueFrom, setDueFrom] = useState(() => searchParams.get("dueFrom") ?? "");
-  const [dueTo, setDueTo] = useState(() => searchParams.get("dueTo") ?? "");
-  const [sortBy, setSortBy] = useState(() => searchParams.get("sortBy") ?? "updatedAt");
-  const [sortDir, setSortDir] = useState(() => searchParams.get("sortDir") ?? "desc");
+  const [titleQuery, setTitleQuery] = useState(
+    () => (useUrlState ? searchParams.get("q") ?? "" : "")
+  );
+  const [dueFrom, setDueFrom] = useState(
+    () => (useUrlState ? searchParams.get("dueFrom") ?? "" : "")
+  );
+  const [dueTo, setDueTo] = useState(
+    () => (useUrlState ? searchParams.get("dueTo") ?? "" : "")
+  );
+  const [sortBy, setSortBy] = useState(
+    () => (useUrlState ? searchParams.get("sortBy") ?? "updatedAt" : "updatedAt")
+  );
+  const [sortDir, setSortDir] = useState(
+    () => (useUrlState ? searchParams.get("sortDir") ?? "desc" : "desc")
+  );
   const [page, setPage] = useState(() => {
+    if (!useUrlState) return 1;
     const value = Number(searchParams.get("page") ?? "1");
     return Number.isFinite(value) && value > 0 ? value : 1;
   });
   const [pageSize, setPageSize] = useState(() => {
+    if (!useUrlState) return DEFAULT_PAGE_SIZE;
     const value = Number(searchParams.get("pageSize") ?? String(DEFAULT_PAGE_SIZE));
     return PAGE_SIZE_OPTIONS.includes(value) ? value : DEFAULT_PAGE_SIZE;
   });
+  const lastEmittedQueryKey = useRef<string | null>(null);
+  const lastAppliedForcedStatus = useRef<string | null>(null);
+  const didInitRef = useRef(false);
+  const skipInitialEmit = useRef(false);
 
   useEffect(() => {
+    if (!useUrlState) return;
     const nextStatus = parseListParam(searchParams.get("status"));
     if (!areListsEqual(nextStatus, statusFilter)) setStatusFilter(nextStatus);
     const nextPriority = parseListParam(searchParams.get("priority"));
@@ -141,13 +182,13 @@ export default function TasksTableClient({
     if (PAGE_SIZE_OPTIONS.includes(nextPageSize) && nextPageSize !== pageSize) {
       setPageSize(nextPageSize);
     }
-  }, [searchParamsString, lockedMemberIds, lockedDepartment]);
+  }, [searchParamsString, lockedMemberIds, lockedDepartment, useUrlState]);
 
   useEffect(() => {
-    const params = new URLSearchParams(searchParamsString);
+    if (!useUrlState) return;
+    const params = new URLSearchParams();
     const setParam = (key: string, value: string, fallback?: string) => {
       if (!value || (fallback && value === fallback)) {
-        params.delete(key);
         return;
       }
       params.set(key, value);
@@ -155,7 +196,6 @@ export default function TasksTableClient({
     const setListParam = (key: string, values: string[]) => {
       const normalized = normalizeList(values);
       if (!normalized.length) {
-        params.delete(key);
         return;
       }
       params.set(key, normalized.join(","));
@@ -170,12 +210,12 @@ export default function TasksTableClient({
     setParam("dueTo", dueTo);
     setParam("sortBy", sortBy, "updatedAt");
     setParam("sortDir", sortDir, "desc");
-    setParam("page", String(page), "1");
-    setParam("pageSize", String(pageSize), String(DEFAULT_PAGE_SIZE));
+    setParam("page", String(page));
+    setParam("pageSize", String(pageSize));
 
     const nextQuery = params.toString();
     if (nextQuery !== searchParamsString) {
-      router.replace(nextQuery ? `?${nextQuery}` : "?", { scroll: false });
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     }
   }, [
     statusFilter,
@@ -189,22 +229,115 @@ export default function TasksTableClient({
     page,
     pageSize,
     router,
+    pathname,
     searchParamsString,
     lockedMemberIds,
     lockedDepartment,
-    departmentFilter
+    departmentFilter,
+    useUrlState
+  ]);
+
+  useEffect(() => {
+    if (useUrlState || !onQueryChange) return;
+    if (!skipInitialEmit.current) {
+      skipInitialEmit.current = true;
+      return;
+    }
+    const query: TaskListQuery = {};
+    if (statusFilter.length) query.status = normalizeList(statusFilter).join(",");
+    if (priorityFilter.length) query.priority = normalizeList(priorityFilter).join(",");
+    if ((lockedMemberIds ?? memberFilter).length) {
+      query.assignedTo = normalizeList(lockedMemberIds ?? memberFilter).join(",");
+    }
+    if ((lockedDepartment ?? departmentFilter).length) {
+      query.department = normalizeList(lockedDepartment ?? departmentFilter).join(",");
+    }
+    if (titleQuery.trim()) query.q = titleQuery.trim();
+    if (dueFrom) query.dueFrom = dueFrom;
+    if (dueTo) query.dueTo = dueTo;
+    query.sortBy = sortBy;
+    query.sortDir = sortDir;
+    query.page = page;
+    query.pageSize = pageSize;
+    const queryKey = JSON.stringify(query);
+    if (lastEmittedQueryKey.current === queryKey) return;
+    const timer = setTimeout(() => {
+      if (lastEmittedQueryKey.current === queryKey) return;
+      lastEmittedQueryKey.current = queryKey;
+      onQueryChange(query);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [
+    useUrlState,
+    onQueryChange,
+    statusFilter,
+    priorityFilter,
+    memberFilter,
+    departmentFilter,
+    lockedMemberIds,
+    lockedDepartment,
+    titleQuery,
+    dueFrom,
+    dueTo,
+    sortBy,
+    sortDir,
+    page,
+    pageSize
   ]);
 
   const totalTasks = pagination?.total ?? tasks.length;
   const totalPages = Math.max(1, Math.ceil(totalTasks / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const currentPageSize = pageSize;
+  const effectivePage = useUrlState ? page : controlledPage ?? page;
+  const effectivePageSize = useUrlState ? pageSize : controlledPageSize ?? pageSize;
+  const currentPage = Math.min(effectivePage, totalPages);
+  const currentPageSize = pagination?.pageSize ?? effectivePageSize;
 
   useEffect(() => {
+    if (!useUrlState) return;
     if (page !== currentPage) {
       setPage(currentPage);
     }
-  }, [currentPage, page]);
+  }, [currentPage, page, useUrlState]);
+
+  useEffect(() => {
+    if (useUrlState) return;
+    if (controlledPage !== undefined && controlledPage !== page) {
+      setPage(controlledPage);
+    }
+    if (controlledPageSize !== undefined && controlledPageSize !== pageSize) {
+      setPageSize(controlledPageSize);
+    }
+  }, [controlledPage, controlledPageSize, page, pageSize, useUrlState]);
+
+  useEffect(() => {
+    if (useUrlState) return;
+    if (!forcedStatusFilter) return;
+    const key = forcedStatusFilter.join(",");
+    if (lastAppliedForcedStatus.current === key) return;
+    lastAppliedForcedStatus.current = key;
+    setStatusFilter(parseListParam(key));
+    setPage(1);
+  }, [forcedStatusFilter, useUrlState]);
+
+  useEffect(() => {
+    if (useUrlState || !initialQuery || didInitRef.current) return;
+    didInitRef.current = true;
+    setStatusFilter(parseListParam(initialQuery.status ?? ""));
+    setPriorityFilter(parseListParam(initialQuery.priority ?? ""));
+    setMemberFilter(
+      lockedMemberIds ?? parseListParam(initialQuery.assignedTo ?? "")
+    );
+    setDepartmentFilter(
+      lockedDepartment ?? parseListParam(initialQuery.department ?? "")
+    );
+    setTitleQuery(initialQuery.q ?? "");
+    setDueFrom(initialQuery.dueFrom ?? "");
+    setDueTo(initialQuery.dueTo ?? "");
+    setSortBy(initialQuery.sortBy ?? "updatedAt");
+    setSortDir(initialQuery.sortDir ?? "desc");
+    if (typeof initialQuery.page === "number") setPage(initialQuery.page);
+    if (typeof initialQuery.pageSize === "number") setPageSize(initialQuery.pageSize);
+  }, [initialQuery, lockedMemberIds, lockedDepartment, useUrlState]);
 
   const memberOptions = useMemo(
     () =>
@@ -220,6 +353,9 @@ export default function TasksTableClient({
   );
 
   const departmentOptions = useMemo(() => {
+    if (departmentOptionsOverride?.length) {
+      return departmentOptionsOverride;
+    }
     const names = new Set<string>();
     let hasUnassigned = false;
     teamMembers.forEach((member) => {
@@ -233,7 +369,7 @@ export default function TasksTableClient({
     const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
     if (hasUnassigned) sorted.push("Unassigned");
     return sorted.map((dept) => ({ value: dept, label: dept }));
-  }, [teamMembers]);
+  }, [departmentOptionsOverride, teamMembers]);
 
   const memberDepartmentMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -347,24 +483,26 @@ export default function TasksTableClient({
       title: "Actions",
       render: (row: Task) => (
         <Space size="small">
-          <Button
-            type="link"
-            onClick={(event) => {
-              event.stopPropagation();
-              handleView(row.id ?? row._id);
-            }}
-          >
-            View
-          </Button>
-          <Button
-            type="link"
-            onClick={(event) => {
-              event.stopPropagation();
-              handleEdit(row.id ?? row._id);
-            }}
-          >
-            Edit
-          </Button>
+          <Tooltip title="View">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleView(row.id ?? row._id);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Edit">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleEdit(row.id ?? row._id);
+              }}
+            />
+          </Tooltip>
         </Space>
       )
     }
@@ -414,6 +552,8 @@ export default function TasksTableClient({
         <Select
           mode="multiple"
           allowClear
+          showSearch
+          optionFilterProp="label"
           maxTagCount="responsive"
           placeholder="All Statuses"
           value={statusFilter}
@@ -427,6 +567,8 @@ export default function TasksTableClient({
         <Select
           mode="multiple"
           allowClear
+          showSearch
+          optionFilterProp="label"
           maxTagCount="responsive"
           placeholder="All Priorities"
           value={priorityFilter}
@@ -441,6 +583,8 @@ export default function TasksTableClient({
           <Select
             mode="multiple"
             allowClear
+            showSearch
+            optionFilterProp="label"
             maxTagCount="responsive"
             placeholder="All Departments"
             value={departmentFilter}
@@ -456,6 +600,8 @@ export default function TasksTableClient({
           <Select
             mode="multiple"
             allowClear
+            showSearch
+            optionFilterProp="label"
             maxTagCount="responsive"
             placeholder="All Team Members"
             value={memberFilter}
@@ -482,7 +628,19 @@ export default function TasksTableClient({
           total: totalTasks,
           showSizeChanger: true,
           pageSizeOptions: PAGE_SIZE_OPTIONS.map(String),
-          showTotal: (total, range) => `Showing ${range[0]}-${range[1]} of ${total} tasks`
+          showTotal: (total, range) => `Showing ${range[0]}-${range[1]} of ${total} tasks`,
+          onChange: (nextPage, nextPageSize) => {
+            const nextSize = nextPageSize ?? pageSize;
+            if (useUrlState) {
+              if (nextPage !== page) setPage(nextPage);
+              if (nextSize !== pageSize) {
+                setPageSize(nextSize);
+                setPage(1);
+              }
+            } else {
+              onPageChange?.(nextPage, nextSize);
+            }
+          }
         }}
         onRow={(record) => ({
           onClick: () => handleView(record.id ?? record._id)
@@ -502,12 +660,7 @@ export default function TasksTableClient({
 
           const sorterKey = typeof normalizedSorter?.columnKey === "string" ? normalizedSorter.columnKey : null;
           const sorterOrder = normalizedSorter?.order;
-          if (!sorterOrder) {
-            setSortBy("updatedAt");
-            setSortDir("desc");
-            return;
-          }
-          if (sorterKey === "title" || sorterKey === "dueDate" || sorterKey === "updatedAt") {
+          if (sorterOrder && (sorterKey === "title" || sorterKey === "dueDate" || sorterKey === "updatedAt")) {
             setSortBy(sorterKey);
             setSortDir(sorterOrder === "ascend" ? "asc" : "desc");
             setPage(1);

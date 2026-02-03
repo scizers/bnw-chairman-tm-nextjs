@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Button, DatePicker, Input, Select, Space, Table } from "antd";
+import { Button, DatePicker, Input, Select, Space, Table, Tooltip } from "antd";
+import { EditOutlined, EyeOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { SorterResult } from "antd/es/table/interface";
 import dayjs from "dayjs";
@@ -191,10 +192,14 @@ export default function MomsPageClient() {
         return (
           <Space size="small">
             <Link href={`/moms/${id}`}>
-              <Button type="link">View</Button>
+              <Tooltip title="View">
+                <Button type="text" icon={<EyeOutlined />} />
+              </Tooltip>
             </Link>
             <Link href={`/moms/${id}/edit`}>
-              <Button type="link">Edit</Button>
+              <Tooltip title="Edit">
+                <Button type="text" icon={<EditOutlined />} />
+              </Tooltip>
             </Link>
           </Space>
         );

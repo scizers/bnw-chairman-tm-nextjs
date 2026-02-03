@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
@@ -26,7 +26,7 @@ const parseListParam = (value: string | null) => {
 
 export default function AgentProfileClient({ teamMemberId }: AgentProfileClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [member, setMember] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [stats, setStats] = useState({
@@ -81,6 +81,10 @@ export default function AgentProfileClient({ teamMemberId }: AgentProfileClientP
     };
   }, [teamMemberId]);
 
+  useEffect(() => {
+    router.replace(pathname, { scroll: false });
+  }, [pathname, router]);
+
   const openCount = stats.open;
   const overdueCount = stats.overdue;
   const inProgressCount = stats.inProgress;
@@ -88,30 +92,18 @@ export default function AgentProfileClient({ teamMemberId }: AgentProfileClientP
   const totalTasks = stats.total;
 
   const title = useMemo(() => member?.name ?? "Team Member", [member]);
-  const activeStatuses = useMemo(
-    () => parseListParam(searchParams.get("status")),
-    [searchParams]
-  );
+  const [activeStatuses, setActiveStatuses] = useState<string[]>([]);
   const memberId = useMemo(
     () => (member ? resolveTeamMemberId(member) ?? teamMemberId : teamMemberId),
     [member, teamMemberId]
   );
 
   const updateStatusFilter = (status?: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (!status) {
-      params.delete("status");
-    } else {
-      const current = parseListParam(params.get("status"));
-      if (current.length === 1 && current[0] === status) {
-        params.delete("status");
-      } else {
-        params.set("status", status);
-      }
-    }
-    params.set("page", "1");
-    const nextQuery = params.toString();
-    router.replace(nextQuery ? `?${nextQuery}` : "?", { scroll: false });
+    setActiveStatuses((current) => {
+      if (!status) return [];
+      if (current.length === 1 && current[0] === status) return [];
+      return [status];
+    });
   };
 
   if (loading) {
@@ -218,6 +210,7 @@ export default function AgentProfileClient({ teamMemberId }: AgentProfileClientP
         <TeamMemberTasksListClient
           teamMemberId={teamMemberId}
           teamMembers={teamMembers}
+          statusFilter={activeStatuses}
           onViewTask={(taskId) => setActiveTaskId(taskId)}
           onEditTask={(taskId) => router.push(`/tasks/${taskId}/edit`)}
         />
