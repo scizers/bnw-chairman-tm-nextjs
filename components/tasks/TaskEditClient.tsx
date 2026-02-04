@@ -50,6 +50,7 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
     assignedTo: "",
     status: "open",
     priority: "low",
+    startDate: "",
     dueDate: ""
   });
 
@@ -61,6 +62,7 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
       assignedTo: task.assignedTo || "",
       status: task.status || "open",
       priority: task.priority || "low",
+      startDate: task.startDate ? task.startDate.slice(0, 10) : "",
       dueDate: task.dueDate ? task.dueDate.slice(0, 10) : ""
     });
   }, [task]);
@@ -78,6 +80,7 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
         assignedTo: form.assignedTo || undefined,
         status: form.status,
         priority: form.priority,
+        startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
         dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined
       });
       router.push(`/tasks/${task.id ?? taskId}`);
@@ -164,12 +167,23 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
           </select>
         </div>
         <div>
+          <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Start Date</label>
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
+            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary cursor-pointer"
+            onClick={(event) => (event.currentTarget as HTMLInputElement).showPicker?.()}
+          />
+        </div>
+        <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Due Date</label>
           <input
             type="date"
             value={form.dueDate}
             onChange={(event) => setForm((prev) => ({ ...prev, dueDate: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
+            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary cursor-pointer"
+            onClick={(event) => (event.currentTarget as HTMLInputElement).showPicker?.()}
           />
         </div>
         <div className="md:col-span-2">

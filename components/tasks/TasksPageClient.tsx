@@ -23,6 +23,8 @@ export default function TasksPageClient() {
     page: 1,
     pageSize: 20
   });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [teamLoaded, setTeamLoaded] = useState(false);
@@ -61,6 +63,10 @@ export default function TasksPageClient() {
           setTeamLoaded(true);
         }
         setPagination(tasksResponse?.meta ?? null);
+        if (tasksResponse?.meta) {
+          setPage(tasksResponse.meta.page ?? query.page ?? 1);
+          setPageSize(tasksResponse.meta.pageSize ?? query.pageSize ?? 20);
+        }
         setHasLoaded(true);
       } catch (err) {
         if (active) setError("Unable to load tasks from the API.");
@@ -78,8 +84,10 @@ export default function TasksPageClient() {
   }, [queryKey, teamLoaded, reloadToken]);
 
   const handleQueryChange = useCallback((nextQuery: TaskListQuery) => {
-    const nextKey = JSON.stringify(nextQuery);
-    setQuery((prev) => (JSON.stringify(prev) === nextKey ? prev : nextQuery));
+    setQuery((prev) => ({
+      ...prev,
+      ...nextQuery
+    }));
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -169,10 +177,19 @@ export default function TasksPageClient() {
         pagination={pagination ?? undefined}
         loading={loading}
         useUrlState={false}
-        page={query.page}
-        pageSize={query.pageSize}
+        page={page}
+        pageSize={pageSize}
         initialQuery={query}
         onQueryChange={handleQueryChange}
+        onPageChange={(nextPage, nextPageSize) => {
+          setPage(nextPage);
+          setPageSize(nextPageSize);
+          setQuery((prev) => ({
+            ...prev,
+            page: nextPage,
+            pageSize: nextPageSize
+          }));
+        }}
       />
     </div>
   );

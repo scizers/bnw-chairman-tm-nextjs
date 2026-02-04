@@ -143,6 +143,8 @@ export default function TasksTableClient({
     const value = Number(searchParams.get("pageSize") ?? String(DEFAULT_PAGE_SIZE));
     return PAGE_SIZE_OPTIONS.includes(value) ? value : DEFAULT_PAGE_SIZE;
   });
+  const resolvedPage = useUrlState ? page : controlledPage ?? page;
+  const resolvedPageSize = useUrlState ? pageSize : controlledPageSize ?? pageSize;
   const lastEmittedQueryKey = useRef<string | null>(null);
   const lastAppliedForcedStatus = useRef<string | null>(null);
   const didInitRef = useRef(false);
@@ -285,12 +287,32 @@ export default function TasksTableClient({
     pageSize
   ]);
 
-  const totalTasks = pagination?.total ?? tasks.length;
-  const totalPages = Math.max(1, Math.ceil(totalTasks / pageSize));
-  const effectivePage = useUrlState ? page : controlledPage ?? page;
-  const effectivePageSize = useUrlState ? pageSize : controlledPageSize ?? pageSize;
-  const currentPage = Math.min(effectivePage, totalPages);
-  const currentPageSize = pagination?.pageSize ?? effectivePageSize;
+  const buildQuery = (overrides?: Partial<{ page: number; pageSize: number }>) => {
+    const query: TaskListQuery = {};
+    if (statusFilter.length) query.status = normalizeList(statusFilter).join(",");
+    if (priorityFilter.length) query.priority = normalizeList(priorityFilter).join(",");
+    if ((lockedMemberIds ?? memberFilter).length) {
+      query.assignedTo = normalizeList(lockedMemberIds ?? memberFilter).join(",");
+    }
+    if ((lockedDepartment ?? departmentFilter).length) {
+      query.department = normalizeList(lockedDepartment ?? departmentFilter).join(",");
+    }
+    if (titleQuery.trim()) query.q = titleQuery.trim();
+    if (dueFrom) query.dueFrom = dueFrom;
+    if (dueTo) query.dueTo = dueTo;
+    query.sortBy = sortBy;
+    query.sortDir = sortDir;
+    query.page = overrides?.page ?? resolvedPage;
+    query.pageSize = overrides?.pageSize ?? resolvedPageSize;
+    return query;
+  };
+
+  const currentPageSize = pagination?.pageSize ?? resolvedPageSize;
+  const totalTasks =
+    pagination?.total ??
+    (pagination?.totalPages ? pagination.totalPages * currentPageSize : tasks.length);
+  const effectivePage = resolvedPage;
+  const currentPage = effectivePage;
 
   useEffect(() => {
     if (!useUrlState) return;
@@ -299,13 +321,22 @@ export default function TasksTableClient({
     }
   }, [currentPage, page, useUrlState]);
 
+  const lastControlledPage = useRef<number | undefined>(controlledPage);
+  const lastControlledPageSize = useRef<number | undefined>(controlledPageSize);
+
   useEffect(() => {
     if (useUrlState) return;
-    if (controlledPage !== undefined && controlledPage !== page) {
-      setPage(controlledPage);
+    if (controlledPage !== lastControlledPage.current) {
+      lastControlledPage.current = controlledPage;
+      if (controlledPage !== undefined && controlledPage !== page) {
+        setPage(controlledPage);
+      }
     }
-    if (controlledPageSize !== undefined && controlledPageSize !== pageSize) {
-      setPageSize(controlledPageSize);
+    if (controlledPageSize !== lastControlledPageSize.current) {
+      lastControlledPageSize.current = controlledPageSize;
+      if (controlledPageSize !== undefined && controlledPageSize !== pageSize) {
+        setPageSize(controlledPageSize);
+      }
     }
   }, [controlledPage, controlledPageSize, page, pageSize, useUrlState]);
 
@@ -639,14 +670,14 @@ export default function TasksTableClient({
           showTotal: (total, range) => `Showing ${range[0]}-${range[1]} of ${total} tasks`,
           onChange: (nextPage, nextPageSize) => {
             const nextSize = nextPageSize ?? pageSize;
-            if (useUrlState) {
-              if (nextPage !== page) setPage(nextPage);
-              if (nextSize !== pageSize) {
-                setPageSize(nextSize);
-                setPage(1);
-              }
-            } else {
-              onPageChange?.(nextPage, nextSize);
+            const nextPageValue = nextSize !== pageSize ? 1 : nextPage;
+            if (!useUrlState) {
+              onPageChange?.(nextPageValue, nextSize);
+              return;
+            }
+            if (nextPageValue !== page) setPage(nextPageValue);
+            if (nextSize !== pageSize) {
+              setPageSize(nextSize);
             }
           }
         }}
@@ -656,10 +687,10 @@ export default function TasksTableClient({
         onChange={(pager, _filters, sorter) => {
           const nextPage = pager.current ?? 1;
           const nextPageSize = pager.pageSize ?? DEFAULT_PAGE_SIZE;
-          if (nextPage !== page) setPage(nextPage);
+          const nextPageValue = nextPageSize !== pageSize ? 1 : nextPage;
+          if (nextPageValue !== page) setPage(nextPageValue);
           if (nextPageSize !== pageSize) {
             setPageSize(nextPageSize);
-            setPage(1);
           }
 
           const normalizedSorter = Array.isArray(sorter)
@@ -672,6 +703,12 @@ export default function TasksTableClient({
             setSortBy(sorterKey);
             setSortDir(sorterOrder === "ascend" ? "asc" : "desc");
             setPage(1);
+          }
+          if (!useUrlState) {
+            const overridePage = sorterOrder ? 1 : nextPageValue;
+            const nextQuery = buildQuery({ page: overridePage, pageSize: nextPageSize });
+            lastEmittedQueryKey.current = JSON.stringify(nextQuery);
+            onQueryChange?.(nextQuery);
           }
         }}
       />
