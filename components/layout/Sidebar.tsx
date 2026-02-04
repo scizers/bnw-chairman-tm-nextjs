@@ -11,6 +11,8 @@ import {
   Building2
 } from "lucide-react";
 import clsx from "clsx";
+import Image from "next/image";
+import logo from "@/public/bnw-logo.png";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -26,9 +28,21 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-surface-card border-r border-border-subtle px-6 py-8">
-      <Link href="/dashboard" className="mb-10 block hover:opacity-90">
-        <p className="text-sm uppercase tracking-[0.3em] text-text-muted">Chairman Office</p>
-        <h1 className="font-display text-2xl text-text-primary mt-2">Executive Desk</h1>
+      <Link href="/dashboard" className="mb-6 block hover:opacity-90">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="h-12 w-12">
+            <Image
+              src={logo}
+              alt="BNW logo"
+              className="h-full w-full object-contain"
+              priority
+            />
+          </div>
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-text-muted">Chairman Office</p>
+            <h1 className="mt-2 font-display text-2xl text-text-primary">Executive Desk</h1>
+          </div>
+        </div>
       </Link>
       <nav className="flex flex-col gap-3">
         {navItems.map((item) => {
