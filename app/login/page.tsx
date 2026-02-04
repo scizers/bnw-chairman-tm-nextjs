@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
+import logo from "@/public/bnw-logo.png";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
 import { persistAuthSession } from "@/lib/auth/token";
@@ -45,8 +47,20 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-md rounded-2xl border border-border-subtle bg-surface-card p-8 shadow-card">
-        <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Chairman Office</p>
-        <h1 className="mt-4 font-display text-3xl text-text-primary">Secure Sign-In</h1>
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center p-2">
+            <Image
+              src={logo}
+              alt="BNW logo"
+              className="h-full w-full object-contain"
+              priority
+            />
+          </div>
+          <p className="mt-4 text-xs uppercase tracking-[0.3em] text-text-muted">
+            Chairman Office
+          </p>
+          <h1 className="mt-2 font-display text-3xl text-text-primary">Secure Sign-In</h1>
+        </div>
         <p className="mt-2 text-sm text-text-muted">
           Access the executive back office task management system.
         </p>
