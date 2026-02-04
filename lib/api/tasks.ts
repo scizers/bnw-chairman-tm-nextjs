@@ -94,6 +94,10 @@ export const tasksApi = {
     const { data } = await clientApi.post(`/tasks/${taskId}/remarks`, { text });
     return data;
   },
+  updateRemark: async (taskId: string, remarkId: string, text: string) => {
+    const { data } = await clientApi.patch(`/tasks/${taskId}/remarks/${remarkId}`, { text });
+    return data;
+  },
   addAudioRemark: async (taskId: string, payload: { audioUrl: string; audioDurationSec: number; audioMimeType: string }) => {
     const { data } = await clientApi.post(`/tasks/${taskId}/remarks/audio`, payload);
     return data;

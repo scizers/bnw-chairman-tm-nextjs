@@ -106,110 +106,86 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Task Detail</p>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-2">
-            <Link
-              href="/tasks"
-              className="inline-flex items-center gap-2 text-xs text-text-muted hover:text-text-primary"
-            >
-              ← Back to tasks
-            </Link>
-            <h2 className="font-display text-3xl text-text-primary">{task.title}</h2>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="font-display text-3xl text-text-primary">{task.title}</h2>
+        <Link
+          href={`/tasks/${task.id ?? task._id}/edit`}
+          className="rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary"
+        >
+          Edit Task
+        </Link>
+      </div>
+
+      <div className="rounded-xl bg-surface-card p-4 shadow-card">
+        <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Description</p>
+        <p className="mt-2 text-sm text-text-primary">{task.description || "No description."}</p>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[2fr_2fr_1.5fr_1.5fr_1.5fr]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</p>
+            <p className="mt-1 text-sm text-text-primary">
+              {assignedToName || "Unassigned"}
+            </p>
+            <p className="text-xs text-text-muted">
+              {assignedToDepartment || "Department"}
+            </p>
           </div>
-          <Link
-            href={`/tasks/${task.id ?? task._id}/edit`}
-            className="rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary"
-          >
-            Edit Task
-          </Link>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Added By</p>
+            <p className="mt-1 text-sm text-text-primary">
+              {task.createdByName ||
+                (typeof task.createdBy === "object" ? task.createdBy?.name : "") ||
+                "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Due Date</p>
+            <p className="mt-1 text-sm text-text-primary">{formatDate(task.dueDate)}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Start Date</p>
+            <p className="mt-1 text-sm text-text-primary">{formatDate(task.startDate)}</p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <StatusBadge label={task.priority} />
+              <StatusBadge label={task.status} />
+            </div>
+            {task.lastRemarkAt ? (
+              <p className="text-xs text-text-muted">
+                Last remark: {formatDate(task.lastRemarkAt)}
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div>
-          <div className="rounded-xl bg-surface-card p-6 shadow-card">
-            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Task Information</p>
-            <p className="mt-3 text-sm text-text-primary">{task.description || "No description."}</p>
-
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</p>
-                <div className="mt-2">
-                  <p className="text-sm text-text-primary">
-                    {assignedToName || "Unassigned"}
-                  </p>
-                  <p className="text-xs text-text-muted">
-                    {assignedToDepartment || "Department"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Added By</p>
-                <p className="mt-2 text-sm text-text-primary">
-                  {task.createdByName ||
-                    (typeof task.createdBy === "object" ? task.createdBy?.name : "") ||
-                    "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Priority</p>
-                <div className="mt-2">
-                  <StatusBadge label={task.priority} />
-                </div>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</p>
-                <div className="mt-2">
-                  <StatusBadge label={task.status} />
-                </div>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Due Date</p>
-                <p className="mt-2 text-sm text-text-primary">{formatDate(task.dueDate)}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Start Date</p>
-                <p className="mt-2 text-sm text-text-primary">{formatDate(task.startDate)}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Last Remark Date</p>
-                <p className="mt-2 text-sm text-text-primary">
-                  {task.lastRemarkAt ? formatDate(task.lastRemarkAt) : "-"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl bg-surface-card p-6 shadow-card">
-          <Tabs
-            items={[
-              {
-                key: "remarks",
-                label: "Remarks",
-                children: (
-                  <TaskRemarksClient
-                    taskId={task.id ?? task._id ?? taskId ?? ""}
-                    initialRemarks={remarks}
-                  />
-                )
-              },
-              {
-                key: "attachments",
-                label: "Attachments",
-                children: (
-                  <TaskAttachmentsClient
-                    taskId={task.id ?? task._id ?? taskId ?? ""}
-                    initialAttachments={task.attachments}
-                  />
-                )
-              }
-            ]}
-          />
-        </div>
+      <div className="rounded-xl bg-surface-card p-4 shadow-card">
+        <Tabs
+          items={[
+            {
+              key: "remarks",
+              label: "Remarks",
+              children: (
+                <TaskRemarksClient
+                  taskId={task.id ?? task._id ?? taskId ?? ""}
+                  initialRemarks={remarks}
+                />
+              )
+            },
+            {
+              key: "attachments",
+              label: "Attachments",
+              children: (
+                <TaskAttachmentsClient
+                  taskId={task.id ?? task._id ?? taskId ?? ""}
+                  initialAttachments={task.attachments}
+                />
+              )
+            }
+          ]}
+        />
       </div>
     </div>
   );

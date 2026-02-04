@@ -181,6 +181,7 @@ export default function TasksPageClient() {
         pageSize={pageSize}
         initialQuery={query}
         onQueryChange={handleQueryChange}
+        onReload={handleRetry}
         onPageChange={(nextPage, nextPageSize) => {
           setPage(nextPage);
           setPageSize(nextPageSize);

@@ -15,6 +15,8 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
   const [profile, setProfile] = useState<{ id?: string; name?: string }>({});
 
   useEffect(() => {
@@ -42,27 +44,53 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
     }
   };
 
+  const handleEdit = (remark: Remark) => {
+    const remarkId = String(remark.id ?? remark._id ?? "");
+    if (!remarkId) return;
+    setEditingId(remarkId);
+    setEditingText(remark.text ?? "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editingText.trim()) return;
+    setLoading(true);
+    try {
+      const response = await tasksApi.updateRemark(taskId, editingId, editingText.trim());
+      setRemarks((prev) =>
+        prev.map((item) => {
+          const id = String(item.id ?? item._id ?? "");
+          if (id !== editingId) return item;
+          return { ...item, text: response?.text ?? editingText.trim() };
+        })
+      );
+      setEditingId(null);
+      setEditingText("");
+    } catch (err) {
+      // keep silent for now
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="rounded-xl bg-surface-card p-6 shadow-card">
-      <h3 className="font-display text-lg text-text-primary">Remarks</h3>
-      <div className="mt-4">
-        <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Add Remark</label>
+    <div className="space-y-4">
+      <div>
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
-          className="mt-2 min-h-[120px] w-full rounded-xl border border-border-subtle bg-surface-muted p-3 text-sm text-text-primary outline-none"
+          className="min-h-[110px] w-full rounded-xl border border-border-subtle bg-surface-muted p-3 text-sm text-text-primary outline-none"
           placeholder="Add executive remark..."
         />
         <button
           type="button"
           disabled={loading}
           onClick={handleAddRemark}
-          className="mt-3 rounded-full bg-brand-primary px-4 py-2 text-xs font-semibold text-black"
+          className="mt-2 rounded-full bg-brand-primary px-4 py-2 text-xs font-semibold text-black"
         >
           {loading ? "Saving..." : "Add Remark"}
         </button>
       </div>
-      <div className="mt-6 space-y-4">
+      <div className="space-y-3">
         {remarks.length ? (
           remarks.map((remark, index) => {
             const authorId = remark.author || remark.createdBy;
@@ -71,6 +99,8 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
               remark.authorName ||
               (isCurrentUser ? profile.name || "You" : undefined) ||
               (authorId ? "Executive Staff" : "Unknown");
+            const isLatest = index === 0;
+            const remarkId = String(remark.id ?? remark._id ?? "");
             return (
               <div
                 key={remark.id ?? remark._id ?? index}
@@ -80,7 +110,48 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
                   <span className="font-semibold text-text-primary">{authorName}</span>
                   <span>{formatDateTime(remark.createdAt)}</span>
                 </div>
-                <p className="mt-3 text-sm text-text-primary">{remark.text}</p>
+                {editingId === remarkId ? (
+                  <div className="mt-3 space-y-2">
+                    <textarea
+                      value={editingText}
+                      onChange={(event) => setEditingText(event.target.value)}
+                      className="min-h-[90px] w-full rounded-xl border border-border-subtle bg-surface-muted p-3 text-sm text-text-primary outline-none"
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={handleSaveEdit}
+                        className="rounded-full bg-brand-primary px-4 py-2 text-xs font-semibold text-black"
+                      >
+                        {loading ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingText("");
+                        }}
+                        className="rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex items-start justify-between gap-3">
+                    <p className="text-sm text-text-primary">{remark.text}</p>
+                    {isLatest ? (
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(remark)}
+                        className="rounded-full border border-border-subtle px-3 py-1 text-[11px] text-text-primary"
+                      >
+                        Edit
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </div>
             );
           })

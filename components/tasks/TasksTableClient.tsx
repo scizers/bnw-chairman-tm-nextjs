@@ -19,6 +19,7 @@ interface TasksTableClientProps {
   teamMembers: TeamMember[];
   pagination?: TaskListMeta;
   loading?: boolean;
+  onReload?: () => void;
   hideMemberFilter?: boolean;
   hideDepartmentFilter?: boolean;
   fixedMemberIds?: string[];
@@ -73,6 +74,7 @@ export default function TasksTableClient({
   teamMembers,
   pagination,
   loading,
+  onReload,
   hideMemberFilter,
   hideDepartmentFilter,
   fixedMemberIds,
@@ -435,6 +437,8 @@ export default function TasksTableClient({
     {
       key: "title",
       title: "Title",
+      fixed: "left",
+      width: 260,
       sorter: true,
       sortOrder: sortBy === "title" ? (sortDir === "asc" ? "ascend" : "descend") : null,
       render: (row: Task) => (
@@ -457,6 +461,7 @@ export default function TasksTableClient({
     {
       key: "assignedTo",
       title: "Assigned To",
+      width: 220,
       render: (row: Task) => {
         const name = row.assignedToName || "Unassigned";
         const department =
@@ -474,6 +479,7 @@ export default function TasksTableClient({
     {
       key: "createdBy",
       title: "Added By",
+      width: 160,
       render: (row: Task) =>
         row.createdByName ||
         (typeof row.createdBy === "object" ? row.createdBy?.name : "") ||
@@ -482,23 +488,36 @@ export default function TasksTableClient({
     {
       key: "status",
       title: "Status",
+      width: 140,
       render: (row: Task) => <StatusBadge label={row.status} />
     },
     {
       key: "priority",
       title: "Priority",
+      width: 140,
       render: (row: Task) => <StatusBadge label={row.priority} />
     },
     {
       key: "dueDate",
       title: "Due Date",
+      width: 140,
       sorter: true,
       sortOrder: sortBy === "dueDate" ? (sortDir === "asc" ? "ascend" : "descend") : null,
       render: (row: Task) => formatDate(row.dueDate)
     },
     {
+      key: "startDate",
+      title: "Start Date",
+      width: 140,
+      sorter: true,
+      sortOrder:
+        sortBy === "startDate" ? (sortDir === "asc" ? "ascend" : "descend") : null,
+      render: (row: Task) => formatDate(row.startDate)
+    },
+    {
       key: "updatedAt",
       title: "Last Remark",
+      width: 220,
       sorter: true,
       sortOrder:
         sortBy === "updatedAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
@@ -520,6 +539,8 @@ export default function TasksTableClient({
     {
       key: "actions",
       title: "Actions",
+      fixed: "right",
+      width: 120,
       render: (row: Task) => (
         <Space size="small">
           <Tooltip title="View">
@@ -549,7 +570,7 @@ export default function TasksTableClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Input
           value={titleQuery}
           onChange={(event) => {
@@ -652,6 +673,15 @@ export default function TasksTableClient({
             className="min-w-[220px]"
           />
         )}
+        {onReload ? (
+          <Button
+            type="default"
+            onClick={onReload}
+            className="ml-auto rounded-full border-border-subtle"
+          >
+            Reload
+          </Button>
+        ) : null}
       </div>
 
       <Table
@@ -699,7 +729,13 @@ export default function TasksTableClient({
 
           const sorterKey = typeof normalizedSorter?.columnKey === "string" ? normalizedSorter.columnKey : null;
           const sorterOrder = normalizedSorter?.order;
-          if (sorterOrder && (sorterKey === "title" || sorterKey === "dueDate" || sorterKey === "updatedAt")) {
+          if (
+            sorterOrder &&
+            (sorterKey === "title" ||
+              sorterKey === "dueDate" ||
+              sorterKey === "startDate" ||
+              sorterKey === "updatedAt")
+          ) {
             setSortBy(sorterKey);
             setSortDir(sorterOrder === "ascend" ? "asc" : "desc");
             setPage(1);
