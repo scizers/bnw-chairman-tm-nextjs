@@ -88,7 +88,13 @@ export default function SalesReportCreateClient() {
       await salesReportsApi.create(buildSalesReportPayload(form));
       router.push("/sales-reports?saved=1");
     } catch (err) {
-      setSaveError("Failed to save daily sales report.");
+      const apiMessage =
+        typeof (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message === "string"
+          ? (err as { response?: { data?: { message?: string } } })?.response?.data
+              ?.message
+          : null;
+      setSaveError(apiMessage || "Failed to save daily sales report.");
     } finally {
       setSaving(false);
     }

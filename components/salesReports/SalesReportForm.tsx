@@ -46,7 +46,6 @@ interface SalesReportFormProps {
   submitLabel?: string;
   loading?: boolean;
   disabled?: boolean;
-  showEditingClosed?: boolean;
 }
 
 const normalizeNumber = (value: unknown) => {
@@ -172,8 +171,7 @@ export default function SalesReportForm({
   teamMembers,
   submitLabel = "Save",
   loading,
-  disabled,
-  showEditingClosed
+  disabled
 }: SalesReportFormProps) {
   const teamOptions = useMemo(
     () =>
@@ -192,7 +190,11 @@ export default function SalesReportForm({
     [value.salesHeads]
   );
 
-  const canSubmit = Boolean(value.reportDate);
+  const hasSalesHead = (value.salesHeads || []).some((head) => Boolean(head.salesHeadId));
+  const hasDirector = (value.salesHeads || []).some((head) =>
+    (head.directors || []).some((director) => Boolean(director.directorId))
+  );
+  const canSubmit = Boolean(value.reportDate) && hasSalesHead && hasDirector;
   const isLocked = Boolean(disabled || loading);
 
   const updateSalesHead = (index: number, updates: Partial<SalesReportSalesHead>) => {
@@ -269,15 +271,6 @@ export default function SalesReportForm({
 
   return (
     <div className="rounded-xl bg-surface-card p-6 shadow-card space-y-6">
-      <div className="rounded-xl border border-border-subtle bg-surface-muted/40 p-4 text-sm text-text-muted">
-        You can edit or delete this report until 10:00 PM today.
-      </div>
-      {showEditingClosed ? (
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-300">
-          Editing window closed
-        </p>
-      ) : null}
-
       <Form layout="vertical" disabled={isLocked}>
         <div className="grid gap-4 md:grid-cols-3">
           <Form.Item
@@ -557,6 +550,13 @@ export default function SalesReportForm({
           <Button onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
+        ) : null}
+        {!hasSalesHead || !hasDirector ? (
+          <div className="text-xs text-rose-300">
+            {!hasSalesHead ? "Select at least one sales head." : null}
+            {!hasSalesHead && !hasDirector ? " " : null}
+            {!hasDirector ? "Select at least one director." : null}
+          </div>
         ) : null}
         <Button
           type="primary"

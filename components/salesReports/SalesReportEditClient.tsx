@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { message } from "antd";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import SalesReportForm, {
@@ -10,7 +9,6 @@ import SalesReportForm, {
   type SalesReportFormState
 } from "@/components/salesReports/SalesReportForm";
 import { salesReportsApi, teamMembersApi } from "@/lib/api";
-import { canEditReport } from "@/lib/utils/reportRules";
 import type { DailySalesReport } from "@/types/salesReport";
 import type { TeamMember } from "@/types/team";
 
@@ -82,20 +80,6 @@ const mapReportToForm = (report: DailySalesReport): SalesReportFormState => ({
         ]
 });
 
-const resolveReportId = (report: DailySalesReport) => report.id ?? report._id ?? "";
-
-const pickLatestReport = (reports: DailySalesReport[]) => {
-  if (!reports.length) return null;
-  return reports.reduce<DailySalesReport | null>((latest, current) => {
-    if (!latest) return current;
-    if (current.reportDate > latest.reportDate) return current;
-    if (current.reportDate < latest.reportDate) return latest;
-    const currentCreated = current.createdAt ? new Date(current.createdAt).getTime() : 0;
-    const latestCreated = latest.createdAt ? new Date(latest.createdAt).getTime() : 0;
-    return currentCreated > latestCreated ? current : latest;
-  }, null);
-};
-
 export default function SalesReportEditClient({ reportId }: SalesReportEditClientProps) {
   const router = useRouter();
   const [form, setForm] = useState<SalesReportFormState | null>(null);
@@ -105,24 +89,16 @@ export default function SalesReportEditClient({ reportId }: SalesReportEditClien
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [editingAllowed, setEditingAllowed] = useState(true);
   // Use the global message API to avoid duplicate holders in the tree.
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [reportData, teamData, reportsList] = await Promise.all([
+      const [reportData, teamData] = await Promise.all([
         salesReportsApi.getById(reportId),
-        teamMembersApi.list(),
-        salesReportsApi.list()
+        teamMembersApi.list()
       ]);
-      const latest = pickLatestReport(reportsList ?? []);
-      const latestId = latest ? resolveReportId(latest) : "";
-      const currentId = reportData ? resolveReportId(reportData) : reportId;
-      const isLatest = latestId && latestId === currentId;
-      const canEdit = reportData ? canEditReport(reportData.createdAt) : false;
-      setEditingAllowed(Boolean(isLatest && canEdit));
       setReport(reportData ?? null);
       setTeamMembers(teamData ?? []);
       setForm(reportData ? mapReportToForm(reportData) : null);
@@ -151,9 +127,6 @@ export default function SalesReportEditClient({ reportId }: SalesReportEditClien
           ? (err as { response?: { data?: { message?: string } } })?.response?.data
               ?.message
           : null;
-      if (apiMessage === "Editing window expired") {
-        setEditingAllowed(false);
-      }
       setSaveError(apiMessage || "Failed to update daily sales report.");
     } finally {
       setSaving(false);
@@ -193,8 +166,6 @@ export default function SalesReportEditClient({ reportId }: SalesReportEditClien
         teamMembers={teamMembers}
         submitLabel={saving ? "Saving..." : "Save Changes"}
         loading={saving}
-        disabled={!editingAllowed}
-        showEditingClosed={!editingAllowed}
       />
     </div>
   );

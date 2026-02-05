@@ -16,16 +16,21 @@ export default function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const isAuthRoute = AUTH_ROUTES.has(pathname);
-  const { role } = getAuthProfile();
+  const { role, canAddUsers } = getAuthProfile();
   const isSalesReport = role === "sales_report";
   const isAllowedSalesReportPath = pathname.startsWith("/sales-reports");
-  const shouldRedirect = isSalesReport && !isAllowedSalesReportPath && !isAuthRoute;
+  const isUsersPath = pathname.startsWith("/users");
+  const shouldRedirectSalesReport =
+    isSalesReport && !isAllowedSalesReportPath && !isAuthRoute;
+  const shouldRedirectUsers = !isSalesReport && !canAddUsers && isUsersPath && !isAuthRoute;
+  const shouldRedirect = shouldRedirectSalesReport || shouldRedirectUsers;
 
   useEffect(() => {
     if (shouldRedirect) {
-      router.replace("/sales-reports");
+      const destination = shouldRedirectUsers ? "/dashboard" : "/sales-reports";
+      router.replace(destination);
     }
-  }, [router, shouldRedirect]);
+  }, [router, shouldRedirect, shouldRedirectUsers]);
 
   if (isAuthRoute) {
     return <>{children}</>;

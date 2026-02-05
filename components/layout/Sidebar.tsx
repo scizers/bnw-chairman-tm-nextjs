@@ -9,7 +9,8 @@ import {
   Settings,
   ClipboardList,
   Building2,
-  BarChart3
+  BarChart3,
+  UserRound
 } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/moms", label: "MOM", icon: ClipboardList },
   { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
+  { href: "/users", label: "Users", icon: UserRound },
   { href: "/team", label: "Team", icon: Users },
   { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/settings", label: "Settings", icon: Settings }
@@ -28,11 +30,13 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { role } = getAuthProfile();
-  const visibleNavItems =
-    role === "sales_report"
-      ? navItems.filter((item) => item.href === "/sales-reports")
-      : navItems;
+  const { role, canAddUsers } = getAuthProfile();
+  let visibleNavItems = navItems;
+  if (role === "sales_report") {
+    visibleNavItems = navItems.filter((item) => item.href === "/sales-reports");
+  } else if (!canAddUsers) {
+    visibleNavItems = navItems.filter((item) => item.href !== "/users");
+  }
   const homeHref = role === "sales_report" ? "/sales-reports" : "/dashboard";
 
   return (

@@ -5,7 +5,7 @@ const DEFAULT_MAX_AGE = 60 * 60 * 24 * 30;
 export const persistAuthSession = (
   token: string,
   refreshToken: string | undefined,
-  user?: { id?: string; _id?: string; name?: string; role?: string }
+  user?: { id?: string; _id?: string; name?: string; role?: string; canAddUsers?: boolean }
 ) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(AUTH_TOKEN_KEY, token);
@@ -17,6 +17,9 @@ export const persistAuthSession = (
   }
   if (user?.role) {
     window.localStorage.setItem("auth_user_role", user.role);
+  }
+  if (user?.canAddUsers !== undefined) {
+    window.localStorage.setItem("auth_user_can_add_users", String(user.canAddUsers));
   }
   const userId = user?.id || user?._id || token;
   if (userId) {
@@ -35,18 +38,25 @@ export const clearAuthToken = () => {
   window.localStorage.removeItem("auth_user_name");
   window.localStorage.removeItem("auth_user_id");
   window.localStorage.removeItem("auth_user_role");
+  window.localStorage.removeItem("auth_user_can_add_users");
   document.cookie = "auth_token=; path=/; max-age=0; samesite=lax";
   document.cookie = "refresh_token=; path=/; max-age=0; samesite=lax";
 };
 
 export const getAuthProfile = () => {
   if (typeof window === "undefined") {
-    return { id: undefined, name: undefined, role: undefined };
+    return { id: undefined, name: undefined, role: undefined, canAddUsers: undefined };
   }
   return {
     id: window.localStorage.getItem("auth_user_id") ?? undefined,
     name: window.localStorage.getItem("auth_user_name") ?? undefined,
-    role: window.localStorage.getItem("auth_user_role") ?? undefined
+    role: window.localStorage.getItem("auth_user_role") ?? undefined,
+    canAddUsers:
+      window.localStorage.getItem("auth_user_can_add_users") === "true"
+        ? true
+        : window.localStorage.getItem("auth_user_can_add_users") === "false"
+          ? false
+          : undefined
   };
 };
 
@@ -62,7 +72,7 @@ export const getAuthToken = () => {
 
 export const persistAuthToken = (
   token: string,
-  user?: { id?: string; _id?: string; name?: string; role?: string }
+  user?: { id?: string; _id?: string; name?: string; role?: string; canAddUsers?: boolean }
 ) => {
   persistAuthSession(token, undefined, user);
 };

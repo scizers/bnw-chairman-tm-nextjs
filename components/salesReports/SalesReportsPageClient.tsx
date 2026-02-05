@@ -10,7 +10,6 @@ import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import { salesReportsApi } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
-import { canEditReport } from "@/lib/utils/reportRules";
 import type { DailySalesReport, SalesReportGrandTotals } from "@/types/salesReport";
 
 const todayLocal = () => {
@@ -60,18 +59,6 @@ const computeTotals = (report: DailySalesReport) => {
 
 const resolveReportId = (report: DailySalesReport) => report.id ?? report._id ?? "";
 
-const pickLatestReport = (reports: DailySalesReport[]) => {
-  if (!reports.length) return null;
-  return reports.reduce<DailySalesReport | null>((latest, current) => {
-    if (!latest) return current;
-    if (current.reportDate > latest.reportDate) return current;
-    if (current.reportDate < latest.reportDate) return latest;
-    const currentCreated = current.createdAt ? new Date(current.createdAt).getTime() : 0;
-    const latestCreated = latest.createdAt ? new Date(latest.createdAt).getTime() : 0;
-    return currentCreated > latestCreated ? current : latest;
-  }, null);
-};
-
 export default function SalesReportsPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -108,9 +95,7 @@ export default function SalesReportsPageClient() {
     if (saved) {
       if (toastHandledRef.current.saved === saved) return;
       toastHandledRef.current.saved = saved;
-      message.success(
-        "Report saved. You may update this report until 10:00 PM today."
-      );
+      message.success("Report saved.");
       router.replace("/sales-reports");
     } else if (updated) {
       if (toastHandledRef.current.updated === updated) return;
@@ -120,12 +105,14 @@ export default function SalesReportsPageClient() {
     }
   }, [router, searchParams]);
 
-  const latestReport = useMemo(() => pickLatestReport(reports), [reports]);
-  const latestReportId = latestReport ? resolveReportId(latestReport) : "";
   const todayReportExists = useMemo(() => {
     const today = todayLocal();
     return reports.some((report) => report.reportDate === today);
   }, [reports]);
+  const addDisabled = todayReportExists;
+  const addTooltip = addDisabled
+    ? "Report for today already added. Edit that report or delete it and add a newer report."
+    : undefined;
 
   const handleDelete = async (report: DailySalesReport) => {
     const reportId = resolveReportId(report);
@@ -192,15 +179,19 @@ export default function SalesReportsPageClient() {
           title="No daily sales reports"
           description="Create the first report to start tracking results."
         />
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          disabled={todayReportExists}
-          onClick={() => router.push("/sales-reports/new")}
-          className="fixed bottom-6 right-6 rounded-full shadow-soft"
-        >
-          Add Daily Sales Report
-        </Button>
+        <Tooltip title={addTooltip}>
+          <span className="fixed bottom-6 right-6">
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              disabled={addDisabled}
+              onClick={() => router.push("/sales-reports/new")}
+              className="rounded-full shadow-soft"
+            >
+              Add Daily Sales Report
+            </Button>
+          </span>
+        </Tooltip>
       </div>
     );
   }
@@ -255,9 +246,7 @@ export default function SalesReportsPageClient() {
       align: "right",
       render: (_value, row) => {
         const reportId = resolveReportId(row);
-        const isLatest = reportId && reportId === latestReportId;
-        const canEdit = isLatest && canEditReport(row.createdAt);
-        if (!canEdit) return null;
+        if (!reportId) return null;
         return (
           <Space size="small" className="justify-end">
             <Tooltip title="Edit">
@@ -316,15 +305,19 @@ export default function SalesReportsPageClient() {
         />
       </div>
 
-      <Button
-        type="primary"
-        icon={<PlusOutlined />}
-        disabled={todayReportExists}
-        onClick={() => router.push("/sales-reports/new")}
-        className="fixed bottom-6 right-6 rounded-full shadow-soft"
-      >
-        Add Daily Sales Report
-      </Button>
+      <Tooltip title={addTooltip}>
+        <span className="fixed bottom-6 right-6">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={addDisabled}
+            onClick={() => router.push("/sales-reports/new")}
+            className="rounded-full shadow-soft"
+          >
+            Add Daily Sales Report
+          </Button>
+        </span>
+      </Tooltip>
     </div>
   );
 }
