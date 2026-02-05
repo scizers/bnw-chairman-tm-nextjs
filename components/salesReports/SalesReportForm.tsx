@@ -230,9 +230,10 @@ export default function SalesReportForm({
     headIndex: number,
     directorIndex: number,
     metric: keyof SalesReportDirectorMetrics,
-    nextValue: number | null
+    nextValue: number | string | null
   ) => {
-    const normalized = Number.isFinite(nextValue) ? Number(nextValue) : 0;
+    const numericValue = typeof nextValue === "string" ? Number(nextValue) : nextValue;
+    const normalized = Number.isFinite(numericValue) ? Number(numericValue) : 0;
     const nextHeads = [...value.salesHeads];
     const head = nextHeads[headIndex] || createSalesHead();
     const directors = head.directors ? [...head.directors] : [];
