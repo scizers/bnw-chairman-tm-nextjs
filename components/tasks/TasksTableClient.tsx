@@ -2,15 +2,15 @@
 
 import {useEffect, useMemo, useRef, useState} from "react";
 import {usePathname, useRouter, useSearchParams} from "next/navigation";
-import {Button, DatePicker, Input, Select, Space, Table, Tooltip} from "antd";
-import {EditOutlined, EyeOutlined} from "@ant-design/icons";
+import {Avatar, Button, DatePicker, Input, Select, Table, Tooltip} from "antd";
+import {EyeOutlined} from "@ant-design/icons";
 import type {ColumnsType} from "antd/es/table";
 import type {SorterResult} from "antd/es/table/interface";
 import dayjs from "dayjs";
 import StatusBadge from "@/components/common/StatusBadge";
 import type {Task} from "@/types/task";
 import type {TeamMember} from "@/types/team";
-import {formatDate, formatRelative} from "@/lib/utils/format";
+import {formatDate, formatDateTime, formatRelative} from "@/lib/utils/format";
 import type {TaskListMeta, TaskListQuery} from "@/lib/api/tasks";
 import {resolveTeamMemberId} from "@/lib/utils/task";
 
@@ -54,6 +54,27 @@ const PRIORITY_OPTIONS = [
     {value: "critical", label: "Critical"}
 ];
 
+const formatShortDate = (value?: string) => {
+    if (!value) return "";
+    const parsed = dayjs(value);
+    if (!parsed.isValid()) return value;
+    return parsed.format("MMM D");
+};
+
+const getInitials = (name?: string) => {
+    if (!name) return "";
+    const parts = name.trim().split(/\s+/);
+    if (!parts.length) return "";
+    const first = parts[0]?.[0] ?? "";
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+    return `${first}${last}`.toUpperCase();
+};
+
+const resolveAddedByName = (row: Task) =>
+    row.createdByName ||
+    (typeof row.createdBy === "object" ? row.createdBy?.name : "") ||
+    "Unknown";
+
 const parseListParam = (value: string | null) => {
     if (!value) return [];
     return value
@@ -87,8 +108,7 @@ export default function TasksTableClient({
                                              onPageChange,
                                              initialQuery,
                                              onQueryChange,
-                                             onViewTask,
-                                             onEditTask
+                                             onViewTask
                                          }: TasksTableClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -424,147 +444,121 @@ export default function TasksTableClient({
         router.push(`/tasks/${taskId}`);
     };
 
-    const handleEdit = (taskId?: string) => {
-        if (!taskId) return;
-        if (onEditTask) {
-            onEditTask(taskId);
-            return;
-        }
-        router.push(`/tasks/${taskId}/edit`);
-    };
-
     const columns: ColumnsType<Task> = [
         {
             key: "title",
             title: "Title",
-            fixed: "left",
-            width: 200,
             sorter: true,
             sortOrder: sortBy === "title" ? (sortDir === "asc" ? "ascend" : "descend") : null,
-            render: (row: Task) => (
-                <div>
-                    <p className="font-semibold text-text-primary">
-            <span
-                className="cursor-pointer hover:underline task-title"
-                onClick={(event) => {
-                    event.stopPropagation();
-                    handleView(row.id ?? row._id);
-                }}
-            >
-              {row.title}
-            </span>
-                    </p>
-                    <p id={'taskDescription'}
-                       className="text-xs text-text-muted test">{row.description || "No description"}</p>
-                </div>
-            )
+            render: (row: Task) => {
+                const addedBy = resolveAddedByName(row);
+                return (
+                    <div className="space-y-1">
+                        <p className="font-semibold text-text-primary break-words">{row.title}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {row.status ? <StatusBadge label={row.status}/> : null}
+                            {row.priority ? <StatusBadge label={row.priority}/> : null}
+                        </div>
+                        <p className="text-xs text-text-muted">Added by {addedBy}</p>
+                    </div>
+                );
+            }
         },
         {
             key: "assignedTo",
             title: "Assigned To",
-            width: 80,
             render: (row: Task) => {
                 const name = row.assignedToName || "Unassigned";
                 const department =
                     row.assignedTo && memberDepartmentMap.get(row.assignedTo)
                         ? memberDepartmentMap.get(row.assignedTo)
                         : "";
+                const avatarUrl =
+                    (row as Task & { assignedToAvatar?: string }).assignedToAvatar || undefined;
                 return (
-                    <div>
-                        <p className="font-semibold text-text-primary">{name}</p>
-                        <p className="text-xs text-text-muted">{department || "Department"}</p>
-                    </div>
+                    <Tooltip title={department || "Department not set"}>
+                        <div className="flex items-center gap-2">
+                            <Avatar
+                                size={28}
+                                src={avatarUrl}
+                                className="bg-white/10 text-text-primary"
+                            >
+                                {getInitials(name)}
+                            </Avatar>
+                            <span className="font-semibold text-text-primary">{name}</span>
+                        </div>
+                    </Tooltip>
                 );
             }
         },
         {
-            key: "createdBy",
-            title: "Added By",
-            width: 160,
-            render: (row: Task) =>
-                row.createdByName ||
-                (typeof row.createdBy === "object" ? row.createdBy?.name : "") ||
-                "—"
-        },
-        {
-            key: "status",
-            title: "Status",
-            width: 140,
-            render: (row: Task) => <StatusBadge label={row.status}/>
-        },
-        {
-            key: "priority",
-            title: "Priority",
-            width: 140,
-            render: (row: Task) => <StatusBadge label={row.priority}/>
-        },
-        {
-            key: "dueDate",
-            title: "Due Date",
-            width: 140,
+            key: "timeline",
+            title: "Timeline",
             sorter: true,
             sortOrder: sortBy === "dueDate" ? (sortDir === "asc" ? "ascend" : "descend") : null,
-            render: (row: Task) => formatDate(row.dueDate)
-        },
-        {
-            key: "startDate",
-            title: "Start Date",
-            width: 140,
-            sorter: true,
-            sortOrder:
-                sortBy === "startDate" ? (sortDir === "asc" ? "ascend" : "descend") : null,
-            render: (row: Task) => formatDate(row.startDate)
+            columnKey: "dueDate",
+            render: (row: Task) => {
+                const startLabel = formatShortDate(row.startDate);
+                const dueLabel = formatShortDate(row.dueDate);
+                let label = "—";
+                if (startLabel && dueLabel) {
+                    label = `${startLabel} \u2192 ${dueLabel}`;
+                } else if (dueLabel) {
+                    label = `Due ${dueLabel}`;
+                } else if (startLabel) {
+                    label = `Starts ${startLabel}`;
+                }
+                const tooltip =
+                    row.startDate && row.dueDate
+                        ? `Start: ${formatDate(row.startDate)} \u2022 Due: ${formatDate(row.dueDate)}`
+                        : row.dueDate
+                            ? `Due: ${formatDate(row.dueDate)}`
+                            : row.startDate
+                                ? `Start: ${formatDate(row.startDate)}`
+                                : "";
+                return tooltip ? (
+                    <Tooltip title={tooltip}>
+                        <span className="text-sm text-text-primary">{label}</span>
+                    </Tooltip>
+                ) : (
+                    <span className="text-sm text-text-muted">{label}</span>
+                );
+            }
         },
         {
             key: "updatedAt",
-            title: "Last Remark",
-            width: 220,
+            title: "Last Activity",
             sorter: true,
             sortOrder:
                 sortBy === "updatedAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
             render: (row: Task) => {
-                const remark = row.lastRemark?.trim();
-                const timestamp = row.lastRemarkAt ?? row.updatedAt;
-                const timeLabel = timestamp ? formatRelative(timestamp) : null;
-                if (!remark) {
-                    return timeLabel ?? "—";
-                }
-                return (
-                    <div>
-                        <p className="text-sm text-text-primary">{remark}</p>
-                        {timeLabel ? <p className="text-xs text-text-muted">{timeLabel}</p> : null}
-                    </div>
+                const timestamp = row.lastRemarkAt ?? row.updatedAt ?? row.createdAt;
+                const timeLabel = timestamp ? formatRelative(timestamp) : "—";
+                const fullTimestamp = timestamp ? formatDateTime(timestamp) : "";
+                return fullTimestamp ? (
+                    <Tooltip title={fullTimestamp}>
+                        <span className="text-sm text-text-primary">{timeLabel}</span>
+                    </Tooltip>
+                ) : (
+                    <span className="text-sm text-text-muted">{timeLabel}</span>
                 );
             }
         },
         {
             key: "actions",
-            title: "Actions",
-            // fixed: "right",
-            width: 50,
+            title: "",
+            align: "right",
             render: (row: Task) => (
-                <Space size="small">
-                    <Tooltip title="View">
-                        <Button
-                            type="text"
-                            icon={<EyeOutlined/>}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                handleView(row.id ?? row._id);
-                            }}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Edit">
-                        <Button
-                            type="text"
-                            icon={<EditOutlined/>}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                handleEdit(row.id ?? row._id);
-                            }}
-                        />
-                    </Tooltip>
-                </Space>
+                <Tooltip title="View">
+                    <Button
+                        type="text"
+                        icon={<EyeOutlined/>}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            handleView(row.id ?? row._id);
+                        }}
+                    />
+                </Tooltip>
             )
         }
     ];
@@ -687,11 +681,11 @@ export default function TasksTableClient({
 
             <Table
                 columns={columns}
-                scroll={{ x: "100%" }}
                 dataSource={tasks}
                 rowKey={(record) => record.id ?? record._id ?? `${record.title}-${record.dueDate ?? ""}`}
                 locale={{emptyText: "No tasks match the current filters."}}
                 loading={loading}
+                size="small"
                 rowClassName={() => "cursor-pointer"}
                 pagination={{
                     current: currentPage,
@@ -735,7 +729,6 @@ export default function TasksTableClient({
                         sorterOrder &&
                         (sorterKey === "title" ||
                             sorterKey === "dueDate" ||
-                            sorterKey === "startDate" ||
                             sorterKey === "updatedAt")
                     ) {
                         setSortBy(sorterKey);
