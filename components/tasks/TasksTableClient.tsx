@@ -34,6 +34,7 @@ interface TasksTableClientProps {
     onQueryChange?: (query: TaskListQuery) => void;
     onViewTask?: (taskId: string) => void;
     onEditTask?: (taskId: string) => void;
+    showResetFilters?: boolean;
 }
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -108,7 +109,8 @@ export default function TasksTableClient({
                                              onPageChange,
                                              initialQuery,
                                              onQueryChange,
-                                             onViewTask
+                                             onViewTask,
+                                             showResetFilters = false
                                          }: TasksTableClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -171,6 +173,10 @@ export default function TasksTableClient({
     const lastAppliedForcedStatus = useRef<string | null>(null);
     const didInitRef = useRef(false);
     const skipInitialEmit = useRef(false);
+    const resolvedForcedStatus = useMemo(
+        () => (forcedStatusFilter?.length ? normalizeList(forcedStatusFilter) : []),
+        [forcedStatusFilter]
+    );
 
     useEffect(() => {
         if (!useUrlState) return;
@@ -424,6 +430,26 @@ export default function TasksTableClient({
         return sorted.map((dept) => ({value: dept, label: dept}));
     }, [departmentOptionsOverride, teamMembers]);
 
+    const hasResettableFilters =
+        Boolean(statusFilter.length) ||
+        Boolean(priorityFilter.length) ||
+        Boolean(titleQuery.trim()) ||
+        Boolean(dueFrom) ||
+        Boolean(dueTo) ||
+        Boolean((lockedMemberIds ?? []).length ? false : memberFilter.length) ||
+        Boolean((lockedDepartment ?? []).length ? false : departmentFilter.length);
+
+    const handleResetFilters = () => {
+        setStatusFilter(resolvedForcedStatus);
+        setPriorityFilter([]);
+        setMemberFilter(lockedMemberIds ?? []);
+        setDepartmentFilter(lockedDepartment ?? []);
+        setTitleQuery("");
+        setDueFrom("");
+        setDueTo("");
+        setPage(1);
+    };
+
     const memberDepartmentMap = useMemo(() => {
         const map = new Map<string, string>();
         teamMembers.forEach((member) => {
@@ -667,14 +693,28 @@ export default function TasksTableClient({
                         className="min-w-[220px]"
                     />
                 )}
-                {onReload ? (
-                    <Button
-                        type="default"
-                        onClick={onReload}
-                        className="ml-auto rounded-full border-border-subtle"
-                    >
-                        Reload
-                    </Button>
+                {showResetFilters || onReload ? (
+                    <div className="ml-auto flex items-center gap-2">
+                        {showResetFilters ? (
+                            <Button
+                                type="default"
+                                onClick={handleResetFilters}
+                                disabled={!hasResettableFilters}
+                                className="rounded-full border-border-subtle"
+                            >
+                                Reset
+                            </Button>
+                        ) : null}
+                        {onReload ? (
+                            <Button
+                                type="default"
+                                onClick={onReload}
+                                className="rounded-full border-border-subtle"
+                            >
+                                Reload
+                            </Button>
+                        ) : null}
+                    </div>
                 ) : null}
             </div>
 

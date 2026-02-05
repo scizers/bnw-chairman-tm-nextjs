@@ -84,10 +84,7 @@ export default function TasksPageClient() {
   }, [queryKey, teamLoaded, reloadToken]);
 
   const handleQueryChange = useCallback((nextQuery: TaskListQuery) => {
-    setQuery((prev) => ({
-      ...prev,
-      ...nextQuery
-    }));
+    setQuery(nextQuery);
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -176,6 +173,7 @@ export default function TasksPageClient() {
         teamMembers={teamMembers}
         pagination={pagination ?? undefined}
         loading={loading}
+        showResetFilters
         useUrlState={false}
         page={page}
         pageSize={pageSize}
