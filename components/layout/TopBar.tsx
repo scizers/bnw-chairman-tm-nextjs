@@ -19,6 +19,8 @@ export default function TopBar() {
   const [changing, setChanging] = useState(false);
   const [changeError, setChangeError] = useState<string | null>(null);
   const { message } = App.useApp();
+  const { role } = getAuthProfile();
+  const isSalesReport = role === "sales_report";
 
   const isPasswordValid = useMemo(() => newPassword.length >= 8, [newPassword]);
   const doesMatch = useMemo(
@@ -64,17 +66,23 @@ export default function TopBar() {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle bg-surface-base/60 px-6 py-4 backdrop-blur">
-      <div className="flex min-w-[240px] flex-1 items-center gap-4">
-        <GlobalSearch />
-      </div>
+      {isSalesReport ? (
+        <div className="flex min-w-[240px] flex-1 items-center gap-4" />
+      ) : (
+        <div className="flex min-w-[240px] flex-1 items-center gap-4">
+          <GlobalSearch />
+        </div>
+      )}
       <div className="flex items-center gap-3">
-        <Link
-          href="/tasks/new"
-          className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-black shadow-soft transition hover:brightness-110"
-        >
-          <PlusCircle size={18} />
-          Create Task
-        </Link>
+        {isSalesReport ? null : (
+          <Link
+            href="/tasks/new"
+            className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-black shadow-soft transition hover:brightness-110"
+          >
+            <PlusCircle size={18} />
+            Create Task
+          </Link>
+        )}
         <div className="relative">
           <button
             type="button"

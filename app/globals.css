@@ -44,3 +44,21 @@ input, textarea, select {
 ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.06);
 }
+
+#taskDescription {
+  max-width: 40%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+
+.task-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

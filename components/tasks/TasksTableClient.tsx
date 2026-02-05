@@ -438,14 +438,14 @@ export default function TasksTableClient({
       key: "title",
       title: "Title",
       fixed: "left",
-      width: 260,
+      width: 200,
       sorter: true,
       sortOrder: sortBy === "title" ? (sortDir === "asc" ? "ascend" : "descend") : null,
       render: (row: Task) => (
         <div>
           <p className="font-semibold text-text-primary">
             <span
-              className="cursor-pointer hover:underline"
+              className="cursor-pointer hover:underline task-title"
               onClick={(event) => {
                 event.stopPropagation();
                 handleView(row.id ?? row._id);
@@ -454,14 +454,14 @@ export default function TasksTableClient({
               {row.title}
             </span>
           </p>
-          <p className="text-xs text-text-muted">{row.description || "No description"}</p>
+          <p id={'taskDescription'} className="text-xs text-text-muted test">{row.description || "No description"}</p>
         </div>
       )
     },
     {
       key: "assignedTo",
       title: "Assigned To",
-      width: 220,
+      width: 80,
       render: (row: Task) => {
         const name = row.assignedToName || "Unassigned";
         const department =

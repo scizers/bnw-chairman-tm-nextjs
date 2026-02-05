@@ -31,12 +31,13 @@ export default function Sidebar() {
   const { role } = getAuthProfile();
   const visibleNavItems =
     role === "sales_report"
-      ? navItems
-      : navItems.filter((item) => item.href !== "/sales-reports");
+      ? navItems.filter((item) => item.href === "/sales-reports")
+      : navItems;
+  const homeHref = role === "sales_report" ? "/sales-reports" : "/dashboard";
 
   return (
-    <aside className="hidden md:flex md:flex-col md:w-64 bg-surface-card border-r border-border-subtle px-6 py-8">
-      <Link href="/dashboard" className="mb-6 block hover:opacity-90">
+    <aside className="hidden md:flex md:flex-col md:w-64 flex-shrink-0 bg-surface-card border-r border-border-subtle px-6 py-8">
+      <Link href={homeHref} className="mb-6 block hover:opacity-90">
         <div className="flex flex-col items-center gap-3 text-center">
           <div className="h-12 w-12">
             <Image

@@ -37,7 +37,9 @@ export default function LoginPage() {
         throw new Error("Token missing from response.");
       }
       persistAuthSession(token, refreshToken, response?.user);
-      router.push("/dashboard");
+      const nextPath =
+        response?.user?.role === "sales_report" ? "/sales-reports" : "/dashboard";
+      router.push(nextPath);
     } catch (err) {
       setError("Login failed. Please verify your credentials.");
     } finally {

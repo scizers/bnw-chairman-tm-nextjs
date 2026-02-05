@@ -3,6 +3,19 @@ import type { NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/forgot-password", "/reset-password"];
 
+const decodeJwtPayload = (token: string) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const json = atob(padded);
+    return JSON.parse(json) as { role?: string } | null;
+  } catch {
+    return null;
+  }
+};
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("auth_token")?.value;
@@ -16,10 +29,24 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (token && pathname === "/login") {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    return NextResponse.redirect(dashboardUrl);
+  if (token) {
+    const role = decodeJwtPayload(token)?.role;
+    if (
+      role === "sales_report" &&
+      !isPublic &&
+      !isAsset &&
+      !pathname.startsWith("/sales-reports")
+    ) {
+      const salesReportUrl = request.nextUrl.clone();
+      salesReportUrl.pathname = "/sales-reports";
+      return NextResponse.redirect(salesReportUrl);
+    }
+
+    if (pathname === "/login") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = role === "sales_report" ? "/sales-reports" : "/dashboard";
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   return NextResponse.next();
