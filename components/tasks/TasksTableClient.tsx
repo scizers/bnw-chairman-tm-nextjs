@@ -492,11 +492,10 @@ export default function TasksTableClient({
             }
         },
         {
-            key: "timeline",
+            key: "dueDate",
             title: "Timeline",
             sorter: true,
             sortOrder: sortBy === "dueDate" ? (sortDir === "asc" ? "ascend" : "descend") : null,
-            columnKey: "dueDate",
             render: (row: Task) => {
                 const startLabel = formatShortDate(row.startDate);
                 const dueLabel = formatShortDate(row.dueDate);
