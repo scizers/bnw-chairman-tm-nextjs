@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { tasksApi } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { Input, Popconfirm, Select } from "antd";
+import { tasksApi, usersApi } from "@/lib/api";
 import type { Remark } from "@/types/remark";
+import type { User } from "@/types/user";
 import { formatDateTime } from "@/lib/utils/format";
 import { getAuthProfile } from "@/lib/auth/token";
 
@@ -15,28 +17,132 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [profile, setProfile] = useState<{ id?: string; name?: string }>({});
+  const [users, setUsers] = useState<User[]>([]);
+  const [filters, setFilters] = useState<{ authorId: string; q: string }>({
+    authorId: "",
+    q: ""
+  });
+  const [searchInput, setSearchInput] = useState("");
+  const [latestRemarkId, setLatestRemarkId] = useState<string>(() => {
+    const latest = initialRemarks?.[0];
+    return latest ? String(latest.id ?? latest._id ?? "") : "";
+  });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setProfile(getAuthProfile());
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadUsers = async () => {
+      try {
+        const data = await usersApi.list();
+        if (!active) return;
+        setUsers(data ?? []);
+      } catch {
+        if (!active) return;
+        setUsers([]);
+      }
+    };
+    void loadUsers();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters((prev) => ({
+        ...prev,
+        q: searchInput.trim()
+      }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const filtersActive = Boolean(filters.authorId || filters.q);
+
+  useEffect(() => {
+    let active = true;
+    const loadRemarks = async () => {
+      if (!taskId) return;
+      setLoadingList(true);
+      try {
+        const data = await tasksApi.getRemarks(taskId, {
+          authorId: filters.authorId || undefined,
+          q: filters.q || undefined
+        });
+        if (!active) return;
+        setRemarks(data ?? []);
+      } catch {
+        if (!active) return;
+        setRemarks([]);
+      } finally {
+        if (active) setLoadingList(false);
+      }
+    };
+    void loadRemarks();
+    return () => {
+      active = false;
+    };
+  }, [taskId, filters.authorId, filters.q]);
+
+  useEffect(() => {
+    let active = true;
+    const loadAll = async () => {
+      if (!taskId) return;
+      try {
+        const data = await tasksApi.getRemarks(taskId);
+        if (!active) return;
+        const latest = data?.[0];
+        setLatestRemarkId(latest ? String(latest.id ?? latest._id ?? "") : "");
+      } catch {
+        if (!active) return;
+      }
+    };
+    void loadAll();
+    return () => {
+      active = false;
+    };
+  }, [taskId, refreshKey]);
+
+  const authorOptions = useMemo(
+    () =>
+      users
+        .map((user) => ({
+          value: String(user.id ?? user._id ?? ""),
+          label: user.name || user.email
+        }))
+        .filter((option) => option.value && option.label)
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [users]
+  );
 
   const handleAddRemark = async () => {
     if (!text.trim()) return;
     setLoading(true);
     try {
       const response = await tasksApi.addRemark(taskId, text.trim());
-      const newRemark: Remark = {
-        id: response?.id ?? response?._id,
-        text: text.trim(),
-        createdAt: response?.createdAt ?? new Date().toISOString(),
-        author: profile.id,
-        authorName: profile.name
-      };
-      setRemarks((prev) => [newRemark, ...prev]);
+      const newRemarkId = String(response?.id ?? response?._id ?? "");
+      setLatestRemarkId(newRemarkId);
+      if (!filtersActive) {
+        const newRemark: Remark = {
+          id: response?.id ?? response?._id,
+          text: text.trim(),
+          createdAt: response?.createdAt ?? new Date().toISOString(),
+          author: profile.id,
+          authorName: profile.name
+        };
+        setRemarks((prev) => [newRemark, ...prev]);
+      }
       setText("");
+      setRefreshKey((prev) => prev + 1);
     } catch (err) {
       // keep silent for now
     } finally {
@@ -72,6 +178,27 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
     }
   };
 
+  const handleDelete = async (remarkId: string) => {
+    if (!remarkId) return;
+    setDeletingId(remarkId);
+    try {
+      await tasksApi.deleteRemark(taskId, remarkId);
+      setRemarks((prev) =>
+        prev.filter((item) => String(item.id ?? item._id ?? "") !== remarkId)
+      );
+      if (editingId === remarkId) {
+        setEditingId(null);
+        setEditingText("");
+      }
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      // keep silent for now
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+
   return (
     <div className="space-y-4">
       <div>
@@ -90,20 +217,43 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
           {loading ? "Saving..." : "Add Remark"}
         </button>
       </div>
+      <div className="flex flex-wrap gap-3">
+        <Select
+          value={filters.authorId || undefined}
+          onChange={(value) =>
+            setFilters((prev) => ({ ...prev, authorId: value ? String(value) : "" }))
+          }
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          placeholder="Filter by author"
+          options={authorOptions}
+          className="min-w-[220px]"
+        />
+        <Input.Search
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          allowClear
+          placeholder="Search remark text"
+          className="min-w-[220px] flex-1"
+        />
+      </div>
       <div className="space-y-3">
-        {remarks.length ? (
-          remarks.map((remark, index) => {
+        {loadingList ? (
+          <p className="text-sm text-text-muted">Loading remarks...</p>
+        ) : remarks.length ? (
+          remarks.map((remark) => {
             const authorId = remark.author || remark.createdBy;
             const isCurrentUser = authorId && profile.id === authorId;
             const authorName =
               remark.authorName ||
               (isCurrentUser ? profile.name || "You" : undefined) ||
               (authorId ? "Executive Staff" : "Unknown");
-            const isLatest = index === 0;
             const remarkId = String(remark.id ?? remark._id ?? "");
+            const isLatest = remarkId && remarkId === latestRemarkId;
             return (
               <div
-                key={remark.id ?? remark._id ?? index}
+                key={remark.id ?? remark._id ?? remark.createdAt ?? remark.text}
                 className="rounded-xl border border-border-subtle bg-surface-muted p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
@@ -139,18 +289,37 @@ export default function TaskRemarksClient({ taskId, initialRemarks }: TaskRemark
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-3 flex items-start justify-between gap-3">
-                    <p className="text-sm text-text-primary">{remark.text}</p>
-                    {isLatest ? (
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(remark)}
-                        className="rounded-full border border-border-subtle px-3 py-1 text-[11px] text-text-primary"
-                      >
-                        Edit
-                      </button>
-                    ) : null}
-                  </div>
+                    <div className="mt-3 flex items-start justify-between gap-3">
+                      <p className="text-sm text-text-primary">{remark.text}</p>
+                      {isLatest ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(remark)}
+                            className="rounded-full border border-border-subtle px-3 py-1 text-[11px] text-text-primary"
+                          >
+                            Edit
+                          </button>
+                          <Popconfirm
+                            title="Delete this remark?"
+                            description="This action cannot be undone."
+                            okText="Delete"
+                            okType="danger"
+                            cancelText="Cancel"
+                            onConfirm={() => handleDelete(remarkId)}
+                            disabled={deletingId === remarkId}
+                          >
+                            <button
+                              type="button"
+                              disabled={deletingId === remarkId}
+                              className="rounded-full border border-border-subtle px-3 py-1 text-[11px] text-rose-300 disabled:opacity-60"
+                            >
+                              {deletingId === remarkId ? "Deleting..." : "Delete"}
+                            </button>
+                          </Popconfirm>
+                        </div>
+                      ) : null}
+                    </div>
                 )}
               </div>
             );

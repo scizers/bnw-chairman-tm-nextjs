@@ -98,12 +98,20 @@ export const tasksApi = {
     const { data } = await clientApi.patch(`/tasks/${taskId}/remarks/${remarkId}`, { text });
     return data;
   },
+  deleteRemark: async (taskId: string, remarkId: string) => {
+    const { data } = await clientApi.delete<{ success: boolean }>(
+      `/tasks/${taskId}/remarks/${remarkId}`
+    );
+    return data;
+  },
   addAudioRemark: async (taskId: string, payload: { audioUrl: string; audioDurationSec: number; audioMimeType: string }) => {
     const { data } = await clientApi.post(`/tasks/${taskId}/remarks/audio`, payload);
     return data;
   },
-  getRemarks: async (taskId: string) => {
-    const { data } = await clientApi.get<Remark[]>(`/tasks/${taskId}/remarks`);
+  getRemarks: async (taskId: string, params?: { authorId?: string; q?: string }) => {
+    const { data } = await clientApi.get<Remark[]>(`/tasks/${taskId}/remarks`, {
+      params
+    });
     return data;
   },
   uploadAttachment: async (file: File, onProgress?: (percent: number) => void) => {

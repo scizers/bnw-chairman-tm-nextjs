@@ -4,16 +4,14 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import logo from "@/public/bnw-logo.png";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
-import { persistAuthSession } from "@/lib/auth/token";
+import { App } from "antd";
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { message } = App.useApp();
 
   const isEmailValid = useMemo(() => {
     const trimmed = email.trim();
@@ -30,16 +28,13 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await authApi.login({ email, password });
-      const token = response?.token;
-      const refreshToken = response?.refreshToken;
-      if (!token || !refreshToken) {
-        throw new Error("Token missing from response.");
-      }
-      persistAuthSession(token, refreshToken, response?.user);
-      router.push("/dashboard");
+      await authApi.requestPasswordReset(email.trim());
+      message.success(
+        "If an account exists, a reset link has been sent to the email."
+      );
+      setEmail("");
     } catch (err) {
-      setError("Login failed. Please verify your credentials.");
+      setError("Unable to request password reset. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -60,37 +55,30 @@ export default function LoginPage() {
           <p className="mt-4 text-xs uppercase tracking-[0.3em] text-text-muted">
             Chairman Office
           </p>
-          <h1 className="mt-2 font-display text-3xl text-text-primary">Secure Sign-In</h1>
+          <h1 className="mt-2 font-display text-3xl text-text-primary">
+            Forgot Password
+          </h1>
         </div>
         <p className="mt-2 text-sm text-text-muted">
-          Access the executive back office task management system.
+          Enter your email and we will send a reset link.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Email</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-text-muted">
+              Email
+            </label>
             <input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary"
-              placeholder="chairman@office.local"
+              placeholder="you@company.com"
               required
             />
             {email.trim().length > 0 && !isEmailValid ? (
               <p className="mt-2 text-xs text-rose-300">Enter a valid email address.</p>
             ) : null}
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary outline-none focus:border-brand-primary"
-              placeholder="Enter password"
-              required
-            />
           </div>
           {error ? (
             <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs text-rose-200">
@@ -102,12 +90,13 @@ export default function LoginPage() {
             disabled={loading || !isEmailValid}
             className="w-full rounded-full bg-brand-primary py-3 text-sm font-semibold text-black shadow-soft transition hover:brightness-110 disabled:opacity-60"
           >
-            {loading ? "Signing in..." : "Login"}
+            {loading ? "Sending..." : "Send reset link"}
           </button>
         </form>
+
         <div className="mt-4 text-center text-xs text-text-muted">
-          <Link href="/forgot-password" className="text-brand-primary hover:underline">
-            Forgot password?
+          <Link href="/login" className="text-brand-primary hover:underline">
+            Return to login
           </Link>
         </div>
       </div>

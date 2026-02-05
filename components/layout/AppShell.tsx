@@ -8,7 +8,7 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-const AUTH_ROUTES = new Set(["/login"]);
+const AUTH_ROUTES = new Set(["/login", "/forgot-password", "/reset-password"]);
 
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();

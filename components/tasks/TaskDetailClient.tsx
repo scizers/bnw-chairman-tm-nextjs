@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
@@ -108,7 +109,18 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="font-display text-3xl text-text-primary">{task.title}</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/tasks"
+            aria-label="Back to task list"
+            className="relative -top-[2px] inline-flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle text-text-primary"
+          >
+            <ArrowLeft size={16} />
+          </Link>
+          <h2 className="mb-[10px] font-display text-3xl text-text-primary">
+            {task.title}
+          </h2>
+        </div>
         <Link
           href={`/tasks/${task.id ?? task._id}/edit`}
           className="rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary"

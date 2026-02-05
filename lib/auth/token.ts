@@ -5,7 +5,7 @@ const DEFAULT_MAX_AGE = 60 * 60 * 24 * 30;
 export const persistAuthSession = (
   token: string,
   refreshToken: string | undefined,
-  user?: { id?: string; _id?: string; name?: string }
+  user?: { id?: string; _id?: string; name?: string; role?: string }
 ) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(AUTH_TOKEN_KEY, token);
@@ -14,6 +14,9 @@ export const persistAuthSession = (
   }
   if (user?.name) {
     window.localStorage.setItem("auth_user_name", user.name);
+  }
+  if (user?.role) {
+    window.localStorage.setItem("auth_user_role", user.role);
   }
   const userId = user?.id || user?._id || token;
   if (userId) {
@@ -31,17 +34,19 @@ export const clearAuthToken = () => {
   window.localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.localStorage.removeItem("auth_user_name");
   window.localStorage.removeItem("auth_user_id");
+  window.localStorage.removeItem("auth_user_role");
   document.cookie = "auth_token=; path=/; max-age=0; samesite=lax";
   document.cookie = "refresh_token=; path=/; max-age=0; samesite=lax";
 };
 
 export const getAuthProfile = () => {
   if (typeof window === "undefined") {
-    return { id: undefined, name: undefined };
+    return { id: undefined, name: undefined, role: undefined };
   }
   return {
     id: window.localStorage.getItem("auth_user_id") ?? undefined,
-    name: window.localStorage.getItem("auth_user_name") ?? undefined
+    name: window.localStorage.getItem("auth_user_name") ?? undefined,
+    role: window.localStorage.getItem("auth_user_role") ?? undefined
   };
 };
 
@@ -57,7 +62,7 @@ export const getAuthToken = () => {
 
 export const persistAuthToken = (
   token: string,
-  user?: { id?: string; _id?: string; name?: string }
+  user?: { id?: string; _id?: string; name?: string; role?: string }
 ) => {
   persistAuthSession(token, undefined, user);
 };

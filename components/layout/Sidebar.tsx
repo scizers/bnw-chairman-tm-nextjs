@@ -8,16 +8,19 @@ import {
   Users,
   Settings,
   ClipboardList,
-  Building2
+  Building2,
+  BarChart3
 } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
 import logo from "@/public/bnw-logo.png";
+import { getAuthProfile } from "@/lib/auth/token";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/moms", label: "MOM", icon: ClipboardList },
+  { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
   { href: "/team", label: "Team", icon: Users },
   { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/settings", label: "Settings", icon: Settings }
@@ -25,6 +28,11 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { role } = getAuthProfile();
+  const visibleNavItems =
+    role === "sales_report"
+      ? navItems
+      : navItems.filter((item) => item.href !== "/sales-reports");
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-surface-card border-r border-border-subtle px-6 py-8">
@@ -45,7 +53,7 @@ export default function Sidebar() {
         </div>
       </Link>
       <nav className="flex flex-col gap-3">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
