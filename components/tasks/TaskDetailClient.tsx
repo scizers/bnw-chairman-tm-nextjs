@@ -135,8 +135,8 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[2fr_2fr_1.5fr_1.5fr_1.5fr]">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</p>
-            <p className="mt-1 text-sm text-text-primary">
+            <p className="mb-0 text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</p>
+            <p className="mb-0 mt-1 text-sm text-text-primary">
               {assignedToName || "Unassigned"}
             </p>
             <p className="text-xs text-text-muted">
@@ -144,7 +144,7 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Added By</p>
+            <p className="mb-0 text-xs uppercase tracking-[0.2em] text-text-muted">Added By</p>
             <p className="mt-1 text-sm text-text-primary">
               {task.createdByName ||
                 (typeof task.createdBy === "object" ? task.createdBy?.name : "") ||
@@ -152,11 +152,11 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Due Date</p>
+            <p className="mb-0 text-xs uppercase tracking-[0.2em] text-text-muted">Due Date</p>
             <p className="mt-1 text-sm text-text-primary">{formatDate(task.dueDate)}</p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Start Date</p>
+            <p className="mb-0 text-xs uppercase tracking-[0.2em] text-text-muted">Start Date</p>
             <p className="mt-1 text-sm text-text-primary">{formatDate(task.startDate)}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
