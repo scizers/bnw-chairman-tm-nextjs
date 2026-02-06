@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Select } from "antd";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import { tasksApi, teamMembersApi } from "@/lib/api";
@@ -120,22 +121,41 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Assigned To</label>
-          <select
-            value={form.assignedTo}
-            onChange={(event) => setForm((prev) => ({ ...prev, assignedTo: event.target.value }))}
-            className="mt-2 w-full rounded-xl border border-border-subtle bg-surface-muted px-4 py-3 text-sm text-text-primary"
-          >
-            <option value="">Unassigned</option>
-            {teamMembers.map((member, index) => {
+          <Select
+            value={form.assignedTo || undefined}
+            onChange={(value) =>
+              setForm((prev) => ({ ...prev, assignedTo: value ? String(value) : "" }))
+            }
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="Unassigned"
+            size="large"
+            className="task-edit-select mt-2 w-full rounded-xl"
+            styles={{
+              selector: {
+                borderRadius: 20,
+                height: 46,
+                padding: "0 16px",
+                borderColor: "rgba(255, 255, 255, 0.08)",
+                background: "#141414",
+                color: "#f8f5ef",
+                boxShadow: "none"
+              },
+              input: {
+                height: 46
+              }
+            }}
+            options={teamMembers.map((member, index) => {
               const value =
                 member.id ?? member._id ?? member.email ?? member.name ?? String(index);
-              return (
-                <option key={`${value}-${index}`} value={value}>
-                  {member.name}
-                </option>
-              );
+              return {
+                value,
+                label: member.name ?? value
+              };
             })}
-          </select>
+            className="task-edit-select mt-2 w-full"
+          />
         </div>
         <div>
           <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</label>

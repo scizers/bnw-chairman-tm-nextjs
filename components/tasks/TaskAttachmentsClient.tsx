@@ -181,10 +181,19 @@ export default function TaskAttachmentsClient({
             const name = resolveName(item, index);
             const Icon = iconForKind(kind);
             const thumbUrl = item.thumbnailUrl || (kind === "image" ? item.fileUrl : "");
+            const key = item.fileUrl || item.thumbnailUrl || `${name}-${index}`;
             return (
-              <button
-                type="button"
+              <div
+                key={key}
+                role="button"
+                tabIndex={0}
                 onClick={() => setPreview(item)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setPreview(item);
+                  }
+                }}
                 className="group relative flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface-card p-3 text-left transition hover:border-border-strong"
                 aria-label={`Preview ${name}`}
               >
@@ -223,7 +232,7 @@ export default function TaskAttachmentsClient({
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

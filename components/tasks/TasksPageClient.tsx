@@ -300,6 +300,13 @@ export default function TasksPageClient({ mode = "all" }: TasksPageClientProps) 
         fixedMemberIds={isMyTasks && resolvedMemberId ? [resolvedMemberId] : undefined}
         onQueryChange={handleQueryChange}
         onReload={handleRetry}
+        onTaskStatusUpdated={(taskId, nextStatus) => {
+          setTasks((prev) =>
+            prev.map((task) =>
+              (task.id ?? task._id) === taskId ? { ...task, status: nextStatus } : task
+            )
+          );
+        }}
         onPageChange={(nextPage, nextPageSize) => {
           setPage(nextPage);
           setPageSize(nextPageSize);

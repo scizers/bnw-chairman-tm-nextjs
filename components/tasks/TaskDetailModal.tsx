@@ -5,6 +5,7 @@ import { Modal, Tabs } from "antd";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import StatusBadge from "@/components/common/StatusBadge";
+import TaskStatusBadge from "@/components/common/TaskStatusBadge";
 import TaskRemarksClient from "@/components/tasks/TaskRemarksClient";
 import TaskAttachmentsClient from "@/components/tasks/TaskAttachmentsClient";
 import { tasksApi, teamMembersApi } from "@/lib/api";
@@ -133,7 +134,13 @@ export default function TaskDetailModal({ open, taskId, onClose }: TaskDetailMod
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Status</p>
               <div className="mt-2">
-                <StatusBadge label={task.status} />
+                <TaskStatusBadge
+                  taskId={resolvedTaskId}
+                  status={task.status}
+                  onChange={(nextStatus) =>
+                    setTask((prev) => (prev ? { ...prev, status: nextStatus } : prev))
+                  }
+                />
               </div>
             </div>
             <div>

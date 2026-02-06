@@ -8,6 +8,7 @@ import type {ColumnsType} from "antd/es/table";
 import type {SorterResult} from "antd/es/table/interface";
 import dayjs from "dayjs";
 import StatusBadge from "@/components/common/StatusBadge";
+import TaskStatusBadge from "@/components/common/TaskStatusBadge";
 import type {Task} from "@/types/task";
 import type {TeamMember} from "@/types/team";
 import {formatDate, formatDateTime, formatRelative} from "@/lib/utils/format";
@@ -34,6 +35,7 @@ interface TasksTableClientProps {
     onQueryChange?: (query: TaskListQuery) => void;
     onViewTask?: (taskId: string) => void;
     onEditTask?: (taskId: string) => void;
+    onTaskStatusUpdated?: (taskId: string, nextStatus: string) => void;
     showResetFilters?: boolean;
 }
 
@@ -110,8 +112,11 @@ export default function TasksTableClient({
                                              initialQuery,
                                              onQueryChange,
                                              onViewTask,
+                                             onEditTask,
+                                             onTaskStatusUpdated,
                                              showResetFilters = false
                                          }: TasksTableClientProps) {
+    const [isClient, setIsClient] = useState(false);
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
@@ -177,6 +182,15 @@ export default function TasksTableClient({
         () => (forcedStatusFilter?.length ? normalizeList(forcedStatusFilter) : []),
         [forcedStatusFilter]
     );
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    const formatDateFallback = (value?: string) => {
+        if (!value) return "";
+        return value.split("T")[0] ?? value;
+    };
 
     useEffect(() => {
         if (!useUrlState) return;
@@ -482,7 +496,17 @@ export default function TasksTableClient({
                     <div className="space-y-1">
                         <p className="font-semibold text-text-primary break-words">{row.title}</p>
                         <div className="flex flex-wrap items-center gap-2">
-                            {row.status ? <StatusBadge label={row.status}/> : null}
+                            {row.status ? (
+                                <TaskStatusBadge
+                                    taskId={row.id ?? row._id}
+                                    status={row.status}
+                                    onChange={(nextStatus) => {
+                                        const id = row.id ?? row._id;
+                                        if (!id) return;
+                                        onTaskStatusUpdated?.(id, nextStatus);
+                                    }}
+                                />
+                            ) : null}
                             {row.priority ? <StatusBadge label={row.priority}/> : null}
                         </div>
                         <p className="text-xs text-text-muted">Added by {addedBy}</p>
@@ -523,8 +547,12 @@ export default function TasksTableClient({
             sorter: true,
             sortOrder: sortBy === "dueDate" ? (sortDir === "asc" ? "ascend" : "descend") : null,
             render: (row: Task) => {
-                const startLabel = formatShortDate(row.startDate);
-                const dueLabel = formatShortDate(row.dueDate);
+                const startLabel = isClient
+                    ? formatShortDate(row.startDate)
+                    : formatDateFallback(row.startDate);
+                const dueLabel = isClient
+                    ? formatShortDate(row.dueDate)
+                    : formatDateFallback(row.dueDate);
                 let label = "—";
                 if (startLabel && dueLabel) {
                     label = `${startLabel} \u2192 ${dueLabel}`;
@@ -533,13 +561,20 @@ export default function TasksTableClient({
                 } else if (startLabel) {
                     label = `Starts ${startLabel}`;
                 }
-                const tooltip =
-                    row.startDate && row.dueDate
+                const tooltip = isClient
+                    ? row.startDate && row.dueDate
                         ? `Start: ${formatDate(row.startDate)} \u2022 Due: ${formatDate(row.dueDate)}`
                         : row.dueDate
                             ? `Due: ${formatDate(row.dueDate)}`
                             : row.startDate
                                 ? `Start: ${formatDate(row.startDate)}`
+                                : ""
+                    : row.startDate && row.dueDate
+                        ? `Start: ${formatDateFallback(row.startDate)} \u2022 Due: ${formatDateFallback(row.dueDate)}`
+                        : row.dueDate
+                            ? `Due: ${formatDateFallback(row.dueDate)}`
+                            : row.startDate
+                                ? `Start: ${formatDateFallback(row.startDate)}`
                                 : "";
                 return tooltip ? (
                     <Tooltip title={tooltip}>
@@ -558,8 +593,12 @@ export default function TasksTableClient({
                 sortBy === "updatedAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
             render: (row: Task) => {
                 const timestamp = row.lastRemarkAt ?? row.updatedAt ?? row.createdAt;
-                const timeLabel = timestamp ? formatRelative(timestamp) : "—";
-                const fullTimestamp = timestamp ? formatDateTime(timestamp) : "";
+                const timeLabel = timestamp
+                    ? (isClient ? formatRelative(timestamp) : formatDateFallback(timestamp))
+                    : "—";
+                const fullTimestamp = timestamp
+                    ? (isClient ? formatDateTime(timestamp) : formatDateFallback(timestamp))
+                    : "";
                 return fullTimestamp ? (
                     <Tooltip title={fullTimestamp}>
                         <span className="text-sm text-text-primary">{timeLabel}</span>

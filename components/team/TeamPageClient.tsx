@@ -62,7 +62,10 @@ export default function TeamPageClient() {
     return <ErrorState title="Team feed unavailable" description={error} onRetry={load} />;
   }
 
-  const hasActiveFilters = Boolean(query.name?.trim()) || Boolean(query.designation?.trim());
+  const hasActiveFilters =
+    Boolean(query.name?.trim()) ||
+    Boolean(query.designation?.trim()) ||
+    Boolean(query.departmentId?.trim());
 
   if (!teamMembers.length && !hasActiveFilters) {
     return (

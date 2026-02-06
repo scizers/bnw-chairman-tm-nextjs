@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -23,7 +24,6 @@ const navItems = [
     label: "Tasks",
     icon: ListTodo,
     children: [
-      { href: "/tasks/my", label: "My Tasks" },
       { href: "/tasks", label: "All Tasks" },
       { href: "/tasks/archive", label: "Archive Tasks" }
     ]
@@ -38,13 +38,27 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { role, canAddUsers } = getAuthProfile();
-  let visibleNavItems = navItems;
-  if (role === "sales_report") {
-    visibleNavItems = navItems.filter((item) => item.href === "/sales-reports");
-  } else if (!canAddUsers) {
-    visibleNavItems = navItems.filter((item) => item.href !== "/users");
-  }
+  const [authProfile, setAuthProfile] = useState<{
+    role?: string;
+    canAddUsers?: boolean;
+  }>({});
+
+  useEffect(() => {
+    setAuthProfile(getAuthProfile());
+  }, []);
+
+  const { role, canAddUsers } = authProfile;
+
+  const visibleNavItems = useMemo(() => {
+    if (role === "sales_report") {
+      return navItems.filter((item) => item.href === "/sales-reports");
+    }
+    if (canAddUsers === false) {
+      return navItems.filter((item) => item.href !== "/users");
+    }
+    return navItems;
+  }, [role, canAddUsers]);
+
   const homeHref = role === "sales_report" ? "/sales-reports" : "/dashboard";
 
   return (

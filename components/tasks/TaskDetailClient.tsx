@@ -8,6 +8,7 @@ import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import StatusBadge from "@/components/common/StatusBadge";
+import TaskStatusBadge from "@/components/common/TaskStatusBadge";
 import { App, Dropdown, Tabs } from "antd";
 import TaskRemarksClient from "@/components/tasks/TaskRemarksClient";
 import TaskAttachmentsClient from "@/components/tasks/TaskAttachmentsClient";
@@ -211,7 +212,13 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
           <div className="flex flex-col items-end gap-2">
             <div className="flex flex-wrap items-center justify-end gap-2">
               <StatusBadge label={task.priority} />
-              <StatusBadge label={task.status} />
+              <TaskStatusBadge
+                taskId={resolvedTaskId}
+                status={task.status}
+                onChange={(nextStatus) =>
+                  setTask((prev) => (prev ? { ...prev, status: nextStatus } : prev))
+                }
+              />
             </div>
             {task.lastRemarkAt ? (
               <p className="text-xs text-text-muted">

@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Space, Table, Tooltip } from "antd";
+import { Button, Input, Select, Space, Table, Tooltip } from "antd";
 import { EditOutlined, EyeOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { TeamMember } from "@/types/team";
 import StatusBadge from "@/components/common/StatusBadge";
 import { resolveTeamMemberId } from "@/lib/utils/task";
 import type { TeamMemberListMeta, TeamMemberListQuery } from "@/lib/api/teamMembers";
+import { departmentsApi } from "@/lib/api/departments";
+import type { Department } from "@/types/department";
 
 interface TeamTableClientProps {
   teamMembers: TeamMember[];
@@ -31,6 +33,8 @@ export default function TeamTableClient({
   const router = useRouter();
   const [nameFilter, setNameFilter] = useState(query.name ?? "");
   const [designationFilter, setDesignationFilter] = useState(query.designation ?? "");
+  const [departmentFilter, setDepartmentFilter] = useState(query.departmentId ?? "");
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [sortBy, setSortBy] = useState(query.sortBy ?? "createdAt");
   const [sortDir, setSortDir] = useState(query.sortDir ?? "desc");
   const [page, setPage] = useState(query.page ?? 1);
@@ -40,11 +44,28 @@ export default function TeamTableClient({
   useEffect(() => {
     setNameFilter(query.name ?? "");
     setDesignationFilter(query.designation ?? "");
+    setDepartmentFilter(query.departmentId ?? "");
     setSortBy(query.sortBy ?? "createdAt");
     setSortDir(query.sortDir ?? "desc");
     setPage(query.page ?? 1);
     setPageSize(query.pageSize ?? DEFAULT_PAGE_SIZE);
   }, [query]);
+
+  useEffect(() => {
+    let active = true;
+    const loadDepartments = async () => {
+      try {
+        const data = await departmentsApi.listAll();
+        if (active) setDepartments(data ?? []);
+      } catch {
+        if (active) setDepartments([]);
+      }
+    };
+    void loadDepartments();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const nextQuery: TeamMemberListQuery = {
@@ -55,6 +76,7 @@ export default function TeamTableClient({
     };
     if (nameFilter.trim()) nextQuery.name = nameFilter.trim();
     if (designationFilter.trim()) nextQuery.designation = designationFilter.trim();
+    if (departmentFilter) nextQuery.departmentId = departmentFilter;
 
     const queryKey = JSON.stringify(nextQuery);
     if (lastEmittedQueryKey.current === queryKey) return;
@@ -64,7 +86,43 @@ export default function TeamTableClient({
       onQueryChange(nextQuery);
     }, 300);
     return () => clearTimeout(timer);
-  }, [nameFilter, designationFilter, sortBy, sortDir, page, pageSize, onQueryChange]);
+  }, [
+    nameFilter,
+    designationFilter,
+    departmentFilter,
+    sortBy,
+    sortDir,
+    page,
+    pageSize,
+    onQueryChange
+  ]);
+
+  const departmentOptions = useMemo(() => {
+    const fromDepartments = departments
+      .map((dept) => ({
+        value: String(dept.id ?? dept._id ?? ""),
+        label: dept.name
+      }))
+      .filter((option) => option.value && option.label);
+    if (fromDepartments.length) return fromDepartments;
+    const fromMembers = teamMembers
+      .map((member) => {
+        const id =
+          typeof member.departmentId === "object" && member.departmentId !== null
+            ? String((member.departmentId as { _id?: string })._id ?? "")
+            : String(member.departmentId ?? "");
+        return {
+          value: id,
+          label: member.department || ""
+        };
+      })
+      .filter((option) => option.value && option.label);
+    const unique = new Map<string, { value: string; label: string }>();
+    fromMembers.forEach((option) => {
+      if (!unique.has(option.value)) unique.set(option.value, option);
+    });
+    return Array.from(unique.values());
+  }, [departments, teamMembers]);
 
   const columns: ColumnsType<TeamMember> = [
     {
@@ -163,6 +221,19 @@ export default function TeamTableClient({
           }}
           allowClear
           placeholder="Search designation"
+          className="min-w-[220px] flex-1"
+        />
+        <Select
+          value={departmentFilter || undefined}
+          onChange={(value) => {
+            setDepartmentFilter(value ?? "");
+            setPage(1);
+          }}
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          placeholder="Filter department"
+          options={departmentOptions}
           className="min-w-[220px] flex-1"
         />
       </div>

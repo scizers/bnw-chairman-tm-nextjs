@@ -4,6 +4,7 @@ import type { TeamMember } from "@/types/team";
 export interface TeamMemberListQuery {
   name?: string;
   designation?: string;
+  departmentId?: string;
   sortBy?: "name" | "designation" | "createdAt";
   sortDir?: "asc" | "desc";
   page?: number;

@@ -107,6 +107,13 @@ export default function DepartmentTasksListClient({
       page={query.page}
       pageSize={query.pageSize}
       onQueryChange={(nextQuery) => setQuery(nextQuery)}
+      onTaskStatusUpdated={(taskId, nextStatus) => {
+        setTasks((prev) =>
+          prev.map((task) =>
+            (task.id ?? task._id) === taskId ? { ...task, status: nextStatus } : task
+          )
+        );
+      }}
       onViewTask={onViewTask}
       onEditTask={onEditTask}
     />
