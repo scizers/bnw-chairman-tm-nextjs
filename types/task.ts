@@ -37,5 +37,6 @@ export interface Task {
   createdAt?: string;
   lastRemarkAt?: string;
   lastRemark?: string;
+  archivedAt?: string | null;
   attachments?: Array<TaskAttachment | string>;
 }

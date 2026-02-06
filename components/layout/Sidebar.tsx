@@ -19,7 +19,15 @@ import { getAuthProfile } from "@/lib/auth/token";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tasks", label: "Tasks", icon: ListTodo },
+  {
+    label: "Tasks",
+    icon: ListTodo,
+    children: [
+      { href: "/tasks/my", label: "My Tasks" },
+      { href: "/tasks", label: "All Tasks" },
+      { href: "/tasks/archive", label: "Archive Tasks" }
+    ]
+  },
   { href: "/moms", label: "MOM", icon: ClipboardList },
   { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
   { href: "/users", label: "Users", icon: UserRound },
@@ -59,8 +67,56 @@ export default function Sidebar() {
       </Link>
       <nav className="flex flex-col gap-3">
         {visibleNavItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
+          if (item.children?.length) {
+            const isChildActive = (href: string) => {
+              if (pathname === href) return true;
+              if (href === "/tasks") {
+                return (
+                  pathname.startsWith("/tasks/") &&
+                  !pathname.startsWith("/tasks/my") &&
+                  !pathname.startsWith("/tasks/archive")
+                );
+              }
+              return pathname.startsWith(`${href}/`);
+            };
+            const childActive = item.children.some((child) => isChildActive(child.href));
+            return (
+              <div key={item.label} className="space-y-2">
+                <div
+                  className={clsx(
+                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition",
+                    childActive
+                      ? "bg-brand-primary/15 text-brand-primary shadow-soft"
+                      : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                  )}
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </div>
+                <div className="ml-9 flex flex-col gap-2">
+                  {item.children.map((child) => {
+                    const active = isChildActive(child.href);
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={clsx(
+                          "rounded-lg px-3 py-2 text-xs transition",
+                          active
+                            ? "bg-brand-primary/20 text-brand-primary"
+                            : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}

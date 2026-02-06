@@ -10,6 +10,7 @@ export interface TaskListQuery {
   q?: string;
   dueFrom?: string;
   dueTo?: string;
+  archived?: string | boolean;
   sortBy?: string;
   sortDir?: string;
   page?: number;
@@ -84,6 +85,10 @@ export const tasksApi = {
   },
   update: async (taskId: string, payload: Partial<Task>) => {
     const { data } = await clientApi.patch<Task>(`/tasks/${taskId}`, payload);
+    return data;
+  },
+  archive: async (taskId: string) => {
+    const { data } = await clientApi.post<Task>(`/tasks/${taskId}/archive`);
     return data;
   },
   addAttachments: async (taskId: string, attachments: Array<{ fileUrl: string }>) => {

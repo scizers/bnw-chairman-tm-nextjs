@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import StatusBadge from "@/components/common/StatusBadge";
-import { Tabs } from "antd";
+import { App, Dropdown, Tabs } from "antd";
 import TaskRemarksClient from "@/components/tasks/TaskRemarksClient";
 import TaskAttachmentsClient from "@/components/tasks/TaskAttachmentsClient";
 import { tasksApi, teamMembersApi } from "@/lib/api";
@@ -22,11 +23,14 @@ interface TaskDetailClientProps {
 }
 
 export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
+  const router = useRouter();
+  const { message, modal } = App.useApp();
   const [task, setTask] = useState<Task | null>(null);
   const [remarks, setRemarks] = useState<Remark[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const resolvedTaskId = task?.id ?? task?._id ?? taskId ?? "";
 
   useEffect(() => {
     if (!taskId) return;
@@ -73,6 +77,32 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
     );
     return member?.department?.trim() ?? "";
   }, [task, teamMembers]);
+
+  const handleArchive = () => {
+    if (!resolvedTaskId) return;
+    modal.confirm({
+      title: "Archive Task",
+      content: "Do you really want to archive this task?",
+      okText: "Yes",
+      cancelText: "No",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await tasksApi.archive(resolvedTaskId);
+          message.success("Task archived.");
+          router.push("/tasks/archive");
+        } catch (err) {
+          message.error("Unable to archive task. Please try again.");
+          throw err;
+        }
+      }
+    });
+  };
+
+  const menuItems = [
+    { key: "edit", label: "Edit Task" },
+    { key: "archive", label: "Archive Task", danger: true }
+  ];
 
 
   if (loading) {
@@ -121,12 +151,31 @@ export default function TaskDetailClient({ taskId }: TaskDetailClientProps) {
             {task.title}
           </h2>
         </div>
-        <Link
-          href={`/tasks/${task.id ?? task._id}/edit`}
-          className="rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary"
+        <Dropdown
+          placement="bottomRight"
+          trigger={["click"]}
+          menu={{
+            items: menuItems,
+            onClick: ({ key }) => {
+              if (key === "edit") {
+                router.push(`/tasks/${resolvedTaskId}/edit`);
+                return;
+              }
+              if (key === "archive") {
+                handleArchive();
+              }
+            }
+          }}
         >
-          Edit Task
-        </Link>
+          <button
+            type="button"
+            disabled={!resolvedTaskId}
+            className="inline-flex items-center gap-2 rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Task Actions
+            <ChevronDown size={14} />
+          </button>
+        </Dropdown>
       </div>
 
       <div className="rounded-xl bg-surface-card p-4 shadow-card">
