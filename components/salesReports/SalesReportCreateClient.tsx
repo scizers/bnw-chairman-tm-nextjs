@@ -8,6 +8,7 @@ import SalesReportForm, {
   type SalesReportFormState
 } from "@/components/salesReports/SalesReportForm";
 import { salesReportsApi, teamMembersApi } from "@/lib/api";
+import type { SalesReportDirector, SalesReportSalesHead } from "@/types/salesReport";
 import type { TeamMember } from "@/types/team";
 
 const todayLocal = () => {
@@ -21,6 +22,43 @@ const createClientId = () => {
     return crypto.randomUUID();
   }
   return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+type SalesReportPrefill = {
+  salesHeads?: SalesReportSalesHead[];
+};
+
+const normalizeNumber = (value: unknown) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return parsed;
+};
+
+const createPrefillDirector = (director?: SalesReportDirector): SalesReportDirector => ({
+  directorId: director?.directorId ?? "",
+  directorName: director?.directorName ?? "",
+  clientId: createClientId(),
+  metrics: {
+    activeTeamMembers: normalizeNumber(director?.metrics?.activeTeamMembers),
+    clientMeetings: 0,
+    cpMeetingsHeadOffice: 0,
+    cpMeetingsChannelPartner: 0,
+    salesAchievedAED: 0
+  }
+});
+
+const createPrefillSalesHead = (head?: SalesReportSalesHead): SalesReportSalesHead => {
+  const directors =
+    head?.directors && head.directors.length
+      ? head.directors.map((director) => createPrefillDirector(director))
+      : [createPrefillDirector()];
+
+  return {
+    salesHeadId: head?.salesHeadId ?? "",
+    salesHeadName: head?.salesHeadName ?? "",
+    totalSalesAED: 0,
+    directors
+  };
 };
 
 const emptyFormState = (): SalesReportFormState => ({
@@ -49,11 +87,22 @@ const emptyFormState = (): SalesReportFormState => ({
   ]
 });
 
+const buildPrefilledState = (prefill?: SalesReportPrefill): SalesReportFormState => {
+  const base = emptyFormState();
+  const salesHeads = prefill?.salesHeads;
+  if (!salesHeads || !salesHeads.length) return base;
+  return {
+    ...base,
+    salesHeads: salesHeads.map((head) => createPrefillSalesHead(head))
+  };
+};
+
 export default function SalesReportCreateClient() {
   const router = useRouter();
   const [form, setForm] = useState<SalesReportFormState>(emptyFormState());
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
+  const [loadingPrefill, setLoadingPrefill] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -78,7 +127,28 @@ export default function SalesReportCreateClient() {
     };
   }, []);
 
-  const isReady = !loadingTeam;
+  useEffect(() => {
+    let active = true;
+    const loadPrefill = async () => {
+      setLoadingPrefill(true);
+      try {
+        const prefill = await salesReportsApi.prefill();
+        if (!active) return;
+        setForm(buildPrefilledState(prefill));
+      } catch {
+        if (!active) return;
+        setForm(emptyFormState());
+      } finally {
+        if (active) setLoadingPrefill(false);
+      }
+    };
+    void loadPrefill();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const isReady = !loadingTeam && !loadingPrefill;
 
   const handleSubmit = async () => {
     if (!form.reportDate) return;

@@ -20,9 +20,11 @@ export default function AppShell({ children }: AppShellProps) {
   const isSalesReport = role === "sales_report";
   const isAllowedSalesReportPath = pathname.startsWith("/sales-reports");
   const isUsersPath = pathname.startsWith("/users");
+  const isAuditLogsPath = pathname.startsWith("/audit-logs");
   const shouldRedirectSalesReport =
     isSalesReport && !isAllowedSalesReportPath && !isAuthRoute;
-  const shouldRedirectUsers = !isSalesReport && !canAddUsers && isUsersPath && !isAuthRoute;
+  const shouldRedirectUsers =
+    !isSalesReport && !canAddUsers && (isUsersPath || isAuditLogsPath) && !isAuthRoute;
   const shouldRedirect = shouldRedirectSalesReport || shouldRedirectUsers;
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { App, Button, Popconfirm, Space, Table, Tooltip } from "antd";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
@@ -11,12 +11,6 @@ import EmptyState from "@/components/common/EmptyState";
 import { salesReportsApi } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
 import type { DailySalesReport, SalesReportGrandTotals } from "@/types/salesReport";
-
-const todayLocal = () => {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60 * 1000;
-  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
-};
 
 const formatNumber = (value?: number) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) return "-";
@@ -105,15 +99,6 @@ export default function SalesReportsPageClient() {
     }
   }, [router, searchParams]);
 
-  const todayReportExists = useMemo(() => {
-    const today = todayLocal();
-    return reports.some((report) => report.reportDate === today);
-  }, [reports]);
-  const addDisabled = todayReportExists;
-  const addTooltip = addDisabled
-    ? "Report for today already added. Edit that report or delete it and add a newer report."
-    : undefined;
-
   const handleDelete = async (report: DailySalesReport) => {
     const reportId = resolveReportId(report);
     if (!reportId) return;
@@ -179,19 +164,16 @@ export default function SalesReportsPageClient() {
           title="No daily sales reports"
           description="Create the first report to start tracking results."
         />
-        <Tooltip title={addTooltip}>
-          <span className="fixed bottom-6 right-6">
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              disabled={addDisabled}
-              onClick={() => router.push("/sales-reports/new")}
-              className="rounded-full shadow-soft"
-            >
-              Add Daily Sales Report
-            </Button>
-          </span>
-        </Tooltip>
+        <span className="fixed bottom-6 right-6">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => router.push("/sales-reports/new")}
+            className="rounded-full shadow-soft"
+          >
+            Add Daily Sales Report
+          </Button>
+        </span>
       </div>
     );
   }
@@ -305,19 +287,16 @@ export default function SalesReportsPageClient() {
         />
       </div>
 
-      <Tooltip title={addTooltip}>
-        <span className="fixed bottom-6 right-6">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            disabled={addDisabled}
-            onClick={() => router.push("/sales-reports/new")}
-            className="rounded-full shadow-soft"
-          >
-            Add Daily Sales Report
-          </Button>
-        </span>
-      </Tooltip>
+      <span className="fixed bottom-6 right-6">
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => router.push("/sales-reports/new")}
+          className="rounded-full shadow-soft"
+        >
+          Add Daily Sales Report
+        </Button>
+      </span>
     </div>
   );
 }

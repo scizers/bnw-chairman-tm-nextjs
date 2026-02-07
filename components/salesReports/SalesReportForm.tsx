@@ -77,6 +77,11 @@ const createClientId = () => {
   return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
+const disableFutureDates = (current: dayjs.Dayjs | null) => {
+  if (!current) return false;
+  return current.isAfter(dayjs().endOf("day"));
+};
+
 const createDirector = (): SalesReportDirector => ({
   directorId: "",
   directorName: "",
@@ -287,6 +292,7 @@ export default function SalesReportForm({
               className="w-full"
               format="YYYY-MM-DD"
               allowClear
+              disabledDate={disableFutureDates}
             />
           </Form.Item>
           <Form.Item

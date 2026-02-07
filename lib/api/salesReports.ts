@@ -1,9 +1,17 @@
 import { clientApi } from "@/lib/api/client";
 import type { DailySalesReport } from "@/types/salesReport";
 
+type SalesReportPrefill = {
+  salesHeads?: DailySalesReport["salesHeads"];
+};
+
 export const salesReportsApi = {
   list: async () => {
     const { data } = await clientApi.get<DailySalesReport[]>("/sales-reports");
+    return data;
+  },
+  prefill: async () => {
+    const { data } = await clientApi.get<SalesReportPrefill>("/sales-reports/prefill");
     return data;
   },
   getById: async (reportId: string) => {
