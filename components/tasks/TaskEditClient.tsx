@@ -131,9 +131,9 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
             optionFilterProp="label"
             placeholder="Unassigned"
             size="large"
-            className="task-edit-select mt-2 w-full rounded-xl"
+            className="task-edit-select mt-2 w-full"
             styles={{
-              selector: {
+              root: {
                 borderRadius: 20,
                 height: 46,
                 padding: "0 16px",
@@ -154,7 +154,6 @@ export default function TaskEditClient({ taskId }: TaskEditClientProps) {
                 label: member.name ?? value
               };
             })}
-            className="task-edit-select mt-2 w-full"
           />
         </div>
         <div>

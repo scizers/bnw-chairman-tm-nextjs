@@ -11,14 +11,34 @@ import {
   ClipboardList,
   Building2,
   BarChart3,
-  UserRound
+  UserRound,
+  type LucideIcon
 } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
 import logo from "@/public/bnw-logo.png";
 import { getAuthProfile } from "@/lib/auth/token";
 
-const navItems = [
+type NavChild = {
+  href: string;
+  label: string;
+};
+
+type NavLinkItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type NavGroupItem = {
+  label: string;
+  icon: LucideIcon;
+  children: NavChild[];
+};
+
+type NavItem = NavLinkItem | NavGroupItem;
+
+const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   {
     label: "Tasks",
@@ -36,6 +56,8 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 
+const isNavLink = (item: NavItem): item is NavLinkItem => "href" in item;
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [authProfile, setAuthProfile] = useState<{
@@ -51,10 +73,12 @@ export default function Sidebar() {
 
   const visibleNavItems = useMemo(() => {
     if (role === "sales_report") {
-      return navItems.filter((item) => item.href === "/sales-reports");
+      return navItems.filter(
+        (item): item is NavLinkItem => isNavLink(item) && item.href === "/sales-reports"
+      );
     }
     if (canAddUsers === false) {
-      return navItems.filter((item) => item.href !== "/users");
+      return navItems.filter((item) => !isNavLink(item) || item.href !== "/users");
     }
     return navItems;
   }, [role, canAddUsers]);
@@ -82,7 +106,7 @@ export default function Sidebar() {
       <nav className="flex flex-col gap-3">
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
-          if (item.children?.length) {
+          if (!isNavLink(item)) {
             const isChildActive = (href: string) => {
               if (pathname === href) return true;
               if (href === "/tasks") {
