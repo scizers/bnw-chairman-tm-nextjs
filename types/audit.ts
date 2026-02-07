@@ -4,6 +4,17 @@ export interface AuditLog {
   action?: string;
   entityType?: string;
   entityId?: string;
+  entity?: {
+    type?: string;
+    id?: string;
+    title?: string;
+    text?: string;
+    remarkType?: string;
+    audioUrl?: string;
+    audioDurationSec?: number;
+    taskId?: string;
+    taskTitle?: string;
+  };
   performedBy?:
     | string
     | {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { App, Button, Popconfirm, Space, Table, Tooltip } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
@@ -231,6 +231,16 @@ export default function SalesReportsPageClient() {
         if (!reportId) return null;
         return (
           <Space size="small" className="justify-end">
+            <Tooltip title="View">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  router.push(`/sales-reports/${reportId}`);
+                }}
+              />
+            </Tooltip>
             <Tooltip title="Edit">
               <Button
                 type="text"

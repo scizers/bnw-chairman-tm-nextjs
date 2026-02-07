@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Input } from "antd";
+import { DatePicker, Input, Pagination, Select } from "antd";
+import dayjs from "dayjs";
 import DataTable, { type TableColumn } from "@/components/common/DataTable";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import StatusBadge from "@/components/common/StatusBadge";
-import { auditLogsApi } from "@/lib/api";
+import { auditLogsApi, usersApi } from "@/lib/api";
 import { formatDateTime, formatRelative } from "@/lib/utils/format";
 import type { AuditLog } from "@/types/audit";
+import type { User } from "@/types/user";
+import type { AuditLogListMeta } from "@/lib/api/auditLogs";
 
 const formatEntityType = (value?: string) => {
   if (!value) return "Unknown";
@@ -74,72 +77,175 @@ const truncateText = (value: string, maxLength = 80) => {
 
 const resolveTimestamp = (log: AuditLog) => log.timestamp ?? log.createdAt;
 
-const resolvePerformerLabel = (log: AuditLog) => {
-  const performer = log.performedBy;
-  if (!performer) return "System";
-  if (typeof performer === "string") return performer;
-  return performer.name || performer.email || performer.id || performer._id || "User";
+const resolveEntityDetails = (log: AuditLog) => {
+  if (log.entityType === "task") {
+    return {
+      primary: log.entity?.title,
+      secondary: undefined
+    };
+  }
+  if (log.entityType === "remark") {
+    let remarkSummary = log.entity?.text;
+    if (!remarkSummary && log.entity?.remarkType === "audio") {
+      const duration = log.entity.audioDurationSec
+        ? `${log.entity.audioDurationSec}s`
+        : "Audio";
+      remarkSummary = `Audio remark (${duration})`;
+    }
+    return {
+      primary: remarkSummary,
+      secondary: log.entity?.taskTitle ? `Task: ${log.entity.taskTitle}` : undefined
+    };
+  }
+  return {
+    primary: undefined,
+    secondary: undefined
+  };
 };
 
-const resolvePerformerDisplay = (log: AuditLog) => {
-  const performer = log.performedBy;
-  if (!performer) {
-    return { primary: "System", secondary: "", title: undefined };
-  }
-  if (typeof performer === "string") {
-    return { primary: truncateText(performer, 24), secondary: "", title: performer };
-  }
-  const primary = performer.name || performer.email || performer.id || performer._id || "User";
-  const secondary = performer.name && performer.email ? performer.email : "";
-  const title = [performer.name, performer.email, performer.id, performer._id]
-    .filter(Boolean)
-    .join(" ");
-  return { primary, secondary, title };
-};
+const PAGE_SIZE = 100;
 
 export default function AuditLogsPageClient() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [pagination, setPagination] = useState<AuditLogListMeta | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [performedBy, setPerformedBy] = useState<string | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState<string | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<string | undefined>(undefined);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await auditLogsApi.list();
-      setLogs(data ?? []);
+      const params = {
+        page,
+        pageSize: PAGE_SIZE,
+        ...(performedBy ? { performedBy } : {}),
+        ...(dateFrom ? { from: dateFrom } : {}),
+        ...(dateTo ? { to: dateTo } : {})
+      };
+      const response = await auditLogsApi.list(params);
+      if (Array.isArray(response)) {
+        setLogs(response ?? []);
+        setPagination({
+          page,
+          pageSize: PAGE_SIZE,
+          total: response.length,
+          totalPages: Math.max(Math.ceil(response.length / PAGE_SIZE), 1)
+        });
+      } else {
+        setLogs(response?.data ?? []);
+        setPagination(response?.meta ?? null);
+      }
     } catch (err) {
       setError("Unable to load audit logs.");
     } finally {
       setLoading(false);
       setHasLoaded(true);
     }
-  }, []);
+  }, [page, performedBy, dateFrom, dateTo]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    let active = true;
+    if (usersLoaded) return () => {};
+    const loadUsers = async () => {
+      try {
+        const data = await usersApi.list();
+        if (active) {
+          setUsers(data ?? []);
+        }
+      } catch {
+        if (active) {
+          setUsers([]);
+        }
+      } finally {
+        if (active) {
+          setUsersLoaded(true);
+        }
+      }
+    };
+    void loadUsers();
+    return () => {
+      active = false;
+    };
+  }, [usersLoaded]);
+
+  const usersById = useMemo(() => {
+    const entries = users
+      .map((user) => {
+        const id = String(user.id ?? user._id ?? "");
+        if (!id) return null;
+        return [id, user] as const;
+      })
+      .filter(Boolean) as Array<[string, User]>;
+    return new Map(entries);
+  }, [users]);
+
+  const performerOptions = useMemo(
+    () =>
+      users
+        .map((user) => {
+          const id = String(user.id ?? user._id ?? "");
+          if (!id) return null;
+          const labelBase = user.name || user.email || id;
+          const label = user.name && user.email ? `${user.name} (${user.email})` : labelBase;
+          return { value: id, label };
+        })
+        .filter(Boolean) as Array<{ value: string; label: string }>,
+    [users]
+  );
+
+  const resolvePerformerLabel = useCallback(
+    (log: AuditLog) => {
+      const performer = log.performedBy;
+      if (!performer) return "System";
+      if (typeof performer === "string") {
+        const user = usersById.get(performer);
+        if (user) {
+          return [user.name, user.email, performer].filter(Boolean).join(" ");
+        }
+        return performer;
+      }
+      return [performer.name, performer.email, performer.id, performer._id]
+        .filter(Boolean)
+        .join(" ");
+    },
+    [usersById]
+  );
+
   const searchableLogs = useMemo(
     () =>
-      logs.map((log) => ({
-        log,
-        searchText: [
-          log.action,
-          log.entityType,
-          log.entityId,
-          resolvePerformerLabel(log),
-          stringifyValue(log.previousValue),
-          stringifyValue(log.newValue),
-          stringifyValue(log.details)
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-      })),
-    [logs]
+      logs.map((log) => {
+        const entityDetails = resolveEntityDetails(log);
+        return {
+          log,
+          searchText: [
+            log.action,
+            log.entityType,
+            log.entityId,
+            resolvePerformerLabel(log),
+            entityDetails.primary,
+            entityDetails.secondary,
+            stringifyValue(log.previousValue),
+            stringifyValue(log.newValue),
+            stringifyValue(log.details)
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+        };
+      }),
+    [logs, resolvePerformerLabel]
   );
 
   const filteredLogs = useMemo(() => {
@@ -149,6 +255,33 @@ export default function AuditLogsPageClient() {
       .filter((item) => item.searchText.includes(query))
       .map((item) => item.log);
   }, [logs, searchableLogs, search]);
+
+  const resolvePerformerDisplay = useCallback(
+    (log: AuditLog) => {
+      const performer = log.performedBy;
+      if (!performer) {
+        return { primary: "System", secondary: "", title: undefined };
+      }
+      if (typeof performer === "string") {
+        const user = usersById.get(performer);
+        if (user) {
+          return {
+            primary: user.name || user.email || performer,
+            secondary: user.name && user.email ? user.email : "",
+            title: performer
+          };
+        }
+        return { primary: truncateText(performer, 24), secondary: "", title: performer };
+      }
+      const primary = performer.name || performer.email || performer.id || performer._id || "User";
+      const secondary = performer.name && performer.email ? performer.email : "";
+      const title = [performer.name, performer.email, performer.id, performer._id]
+        .filter(Boolean)
+        .join(" ");
+      return { primary, secondary, title };
+    },
+    [usersById]
+  );
 
   const columns = useMemo<TableColumn<AuditLog>[]>(
     () => [
@@ -176,12 +309,20 @@ export default function AuditLogsPageClient() {
         header: "Entity",
         render: (row) => {
           const entityId = row.entityId ? String(row.entityId) : "-";
+          const entityDetails = resolveEntityDetails(row);
           return (
-            <div>
+            <div title={entityId}>
               <p className="font-semibold text-text-primary">{formatEntityType(row.entityType)}</p>
-              <p className="truncate text-xs text-text-muted" title={entityId}>
-                {entityId}
-              </p>
+              {entityDetails.primary ? (
+                <p className="truncate text-xs text-text-muted" title={entityDetails.primary}>
+                  {entityDetails.primary}
+                </p>
+              ) : null}
+              {entityDetails.secondary ? (
+                <p className="truncate text-[11px] text-text-muted/80" title={entityDetails.secondary}>
+                  {entityDetails.secondary}
+                </p>
+              ) : null}
             </div>
           );
         }
@@ -216,7 +357,7 @@ export default function AuditLogsPageClient() {
         }
       }
     ],
-    []
+    [resolvePerformerDisplay]
   );
 
   if (loading && !hasLoaded) {
@@ -231,7 +372,15 @@ export default function AuditLogsPageClient() {
     return <ErrorState title="Audit log feed unavailable" description={error} onRetry={load} />;
   }
 
-  if (!logs.length) {
+  const hasActiveFilters =
+    Boolean(search.trim()) || Boolean(performedBy) || Boolean(dateFrom) || Boolean(dateTo);
+  const totalLogs = pagination?.total ?? logs.length;
+  const visibleLogs = filteredLogs.length;
+  const countLabel = search.trim()
+    ? `${visibleLogs} of ${totalLogs} logs`
+    : `${totalLogs} logs`;
+
+  if (!logs.length && !hasActiveFilters) {
     return (
       <EmptyState
         title="No audit logs yet"
@@ -242,8 +391,8 @@ export default function AuditLogsPageClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-text-muted">{filteredLogs.length} logs</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-text-muted">{countLabel}</p>
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -251,13 +400,59 @@ export default function AuditLogsPageClient() {
           placeholder="Search actions, entities, people"
           className="min-w-[220px] flex-1"
         />
+        <Select
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          placeholder="Performed by"
+          value={performedBy}
+          onChange={(value) => {
+            setPerformedBy(value);
+            setPage(1);
+          }}
+          options={performerOptions}
+          className="min-w-[220px]"
+        />
+        <DatePicker.RangePicker
+          showTime
+          allowClear
+          value={
+            dateFrom && dateTo ? [dayjs(dateFrom), dayjs(dateTo)] : null
+          }
+          onChange={(dates) => {
+            if (!dates || !dates[0] || !dates[1]) {
+              setDateFrom(undefined);
+              setDateTo(undefined);
+              setPage(1);
+              return;
+            }
+            setDateFrom(dates[0].toISOString());
+            setDateTo(dates[1].toISOString());
+            setPage(1);
+          }}
+          className="min-w-[260px]"
+          format="YYYY-MM-DD HH:mm"
+          placeholder={["From", "To"]}
+        />
       </div>
 
       <DataTable
         columns={columns}
         data={filteredLogs}
-        emptyState="No audit logs match your search."
+        emptyState={hasActiveFilters ? "No audit logs match the current filters." : "No audit logs yet."}
       />
+
+      {pagination && pagination.total > pagination.pageSize ? (
+        <div className="flex justify-end">
+          <Pagination
+            current={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            showSizeChanger={false}
+            onChange={(nextPage) => setPage(nextPage)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
