@@ -257,7 +257,9 @@ export default function TasksPageClient({ mode = "all" }: TasksPageClientProps) 
     Boolean(query.dueFrom) ||
     Boolean(query.dueTo) ||
     Boolean(query.createdFrom) ||
-    Boolean(query.createdTo);
+    Boolean(query.createdTo) ||
+    Boolean(query.updatedFrom) ||
+    Boolean(query.updatedTo);
 
   const totalTasks = pagination?.total ?? tasks.length;
   if (!totalTasks && !hasActiveFilters) {

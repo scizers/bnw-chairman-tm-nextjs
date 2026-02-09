@@ -156,6 +156,12 @@ export default function TasksTableClient({
     const [createdTo, setCreatedTo] = useState(
         () => (useUrlState ? searchParams.get("createdTo") ?? "" : "")
     );
+    const [updatedFrom, setUpdatedFrom] = useState(
+        () => (useUrlState ? searchParams.get("updatedFrom") ?? "" : "")
+    );
+    const [updatedTo, setUpdatedTo] = useState(
+        () => (useUrlState ? searchParams.get("updatedTo") ?? "" : "")
+    );
     const [dueFrom, setDueFrom] = useState(
         () => (useUrlState ? searchParams.get("dueFrom") ?? "" : "")
     );
@@ -183,7 +189,6 @@ export default function TasksTableClient({
     const lastEmittedQueryKey = useRef<string | null>(null);
     const lastAppliedForcedStatus = useRef<string | null>(null);
     const didInitRef = useRef(false);
-    const skipInitialEmit = useRef(false);
     const resolvedForcedStatus = useMemo(
         () => (forcedStatusFilter?.length ? normalizeList(forcedStatusFilter) : []),
         [forcedStatusFilter]
@@ -222,6 +227,10 @@ export default function TasksTableClient({
         if (nextCreatedFrom !== createdFrom) setCreatedFrom(nextCreatedFrom);
         const nextCreatedTo = searchParams.get("createdTo") ?? "";
         if (nextCreatedTo !== createdTo) setCreatedTo(nextCreatedTo);
+        const nextUpdatedFrom = searchParams.get("updatedFrom") ?? "";
+        if (nextUpdatedFrom !== updatedFrom) setUpdatedFrom(nextUpdatedFrom);
+        const nextUpdatedTo = searchParams.get("updatedTo") ?? "";
+        if (nextUpdatedTo !== updatedTo) setUpdatedTo(nextUpdatedTo);
         const nextDueFrom = searchParams.get("dueFrom") ?? "";
         if (nextDueFrom !== dueFrom) setDueFrom(nextDueFrom);
         const nextDueTo = searchParams.get("dueTo") ?? "";
@@ -236,7 +245,49 @@ export default function TasksTableClient({
         if (PAGE_SIZE_OPTIONS.includes(nextPageSize) && nextPageSize !== pageSize) {
             setPageSize(nextPageSize);
         }
-    }, [searchParamsString, lockedMemberIds, lockedDepartment, useUrlState, titleQuery, createdFrom, createdTo, dueFrom, dueTo, sortBy, sortDir, page, pageSize, statusFilter, priorityFilter, memberFilter, departmentFilter]);
+    }, [searchParamsString, lockedMemberIds, lockedDepartment, useUrlState]);
+
+    const urlQueryKey = useMemo(
+        () =>
+            JSON.stringify({
+                statusFilter,
+                priorityFilter,
+                memberFilter,
+                departmentFilter,
+                lockedMemberIds,
+                lockedDepartment,
+                titleQuery,
+                createdFrom,
+                createdTo,
+                updatedFrom,
+                updatedTo,
+                dueFrom,
+                dueTo,
+                sortBy,
+                sortDir,
+                page,
+                pageSize
+            }),
+        [
+            statusFilter,
+            priorityFilter,
+            memberFilter,
+            departmentFilter,
+            lockedMemberIds,
+            lockedDepartment,
+            titleQuery,
+            createdFrom,
+            createdTo,
+            updatedFrom,
+            updatedTo,
+            dueFrom,
+            dueTo,
+            sortBy,
+            sortDir,
+            page,
+            pageSize
+        ]
+    );
 
     useEffect(() => {
         if (!useUrlState) return;
@@ -262,6 +313,8 @@ export default function TasksTableClient({
         setParam("q", titleQuery.trim());
         setParam("createdFrom", createdFrom);
         setParam("createdTo", createdTo);
+        setParam("updatedFrom", updatedFrom);
+        setParam("updatedTo", updatedTo);
         setParam("dueFrom", dueFrom);
         setParam("dueTo", dueTo);
         setParam("sortBy", sortBy, "updatedAt");
@@ -273,34 +326,10 @@ export default function TasksTableClient({
         if (nextQuery !== searchParamsString) {
             router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {scroll: false});
         }
-    }, [
-        statusFilter,
-        priorityFilter,
-        memberFilter,
-        titleQuery,
-        createdFrom,
-        createdTo,
-        dueFrom,
-        dueTo,
-        sortBy,
-        sortDir,
-        page,
-        pageSize,
-        router,
-        pathname,
-        searchParamsString,
-        lockedMemberIds,
-        lockedDepartment,
-        departmentFilter,
-        useUrlState
-    ]);
+    }, [urlQueryKey, router, pathname, searchParamsString, lockedMemberIds, lockedDepartment, useUrlState]);
 
     useEffect(() => {
         if (useUrlState || !onQueryChange) return;
-        if (!skipInitialEmit.current) {
-            skipInitialEmit.current = true;
-            return;
-        }
         const query: TaskListQuery = {};
         if (statusFilter.length) query.status = normalizeList(statusFilter).join(",");
         if (priorityFilter.length) query.priority = normalizeList(priorityFilter).join(",");
@@ -313,6 +342,8 @@ export default function TasksTableClient({
         if (titleQuery.trim()) query.q = titleQuery.trim();
         if (createdFrom) query.createdFrom = createdFrom;
         if (createdTo) query.createdTo = createdTo;
+        if (updatedFrom) query.updatedFrom = updatedFrom;
+        if (updatedTo) query.updatedTo = updatedTo;
         if (dueFrom) query.dueFrom = dueFrom;
         if (dueTo) query.dueTo = dueTo;
         query.sortBy = sortBy;
@@ -339,6 +370,8 @@ export default function TasksTableClient({
         titleQuery,
         createdFrom,
         createdTo,
+        updatedFrom,
+        updatedTo,
         dueFrom,
         dueTo,
         sortBy,
@@ -360,6 +393,8 @@ export default function TasksTableClient({
         if (titleQuery.trim()) query.q = titleQuery.trim();
         if (createdFrom) query.createdFrom = createdFrom;
         if (createdTo) query.createdTo = createdTo;
+        if (updatedFrom) query.updatedFrom = updatedFrom;
+        if (updatedTo) query.updatedTo = updatedTo;
         if (dueFrom) query.dueFrom = dueFrom;
         if (dueTo) query.dueTo = dueTo;
         query.sortBy = sortBy;
@@ -426,6 +461,8 @@ export default function TasksTableClient({
         setTitleQuery(initialQuery.q ?? "");
         setCreatedFrom(initialQuery.createdFrom ?? "");
         setCreatedTo(initialQuery.createdTo ?? "");
+        setUpdatedFrom(initialQuery.updatedFrom ?? "");
+        setUpdatedTo(initialQuery.updatedTo ?? "");
         setDueFrom(initialQuery.dueFrom ?? "");
         setDueTo(initialQuery.dueTo ?? "");
         setSortBy(initialQuery.sortBy ?? "updatedAt");
@@ -472,6 +509,8 @@ export default function TasksTableClient({
         Boolean(titleQuery.trim()) ||
         Boolean(createdFrom) ||
         Boolean(createdTo) ||
+        Boolean(updatedFrom) ||
+        Boolean(updatedTo) ||
         Boolean(dueFrom) ||
         Boolean(dueTo) ||
         Boolean((lockedMemberIds ?? []).length ? false : memberFilter.length) ||
@@ -485,6 +524,8 @@ export default function TasksTableClient({
         setTitleQuery("");
         setCreatedFrom("");
         setCreatedTo("");
+        setUpdatedFrom("");
+        setUpdatedTo("");
         setDueFrom("");
         setDueTo("");
         setPage(1);
@@ -635,6 +676,29 @@ export default function TasksTableClient({
             }
         },
         {
+            key: "updatedAtActual",
+            title: "Updated",
+            sorter: true,
+            sortOrder:
+                sortBy === "updatedAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
+            render: (row: Task) => {
+                const timestamp = row.updatedAt;
+                const timeLabel = timestamp
+                    ? (isClient ? formatDate(timestamp) : formatDateFallback(timestamp))
+                    : "—";
+                const fullTimestamp = timestamp
+                    ? (isClient ? formatDateTime(timestamp) : formatDateFallback(timestamp))
+                    : "";
+                return fullTimestamp ? (
+                    <Tooltip title={fullTimestamp}>
+                        <span className="text-sm text-text-primary">{timeLabel}</span>
+                    </Tooltip>
+                ) : (
+                    <span className="text-sm text-text-muted">{timeLabel}</span>
+                );
+            }
+        },
+        {
             key: "createdAt",
             title: "Created",
             sorter: true,
@@ -734,6 +798,30 @@ export default function TasksTableClient({
                             const [start, end] = Array.isArray(dates) ? dates : [];
                             setCreatedFrom(start ? start.format("YYYY-MM-DD") : "");
                             setCreatedTo(end ? end.format("YYYY-MM-DD") : "");
+                            setPage(1);
+                        }}
+                        className="min-w-[220px]"
+                        allowClear
+                        format="YYYY-MM-DD"
+                    />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-[0.2em] text-text-muted">
+            Updated
+          </span>
+                    <DatePicker.RangePicker
+                        value={
+                            updatedFrom || updatedTo
+                                ? [
+                                    updatedFrom ? dayjs(updatedFrom) : null,
+                                    updatedTo ? dayjs(updatedTo) : null
+                                ]
+                                : null
+                        }
+                        onChange={(dates) => {
+                            const [start, end] = Array.isArray(dates) ? dates : [];
+                            setUpdatedFrom(start ? start.format("YYYY-MM-DD") : "");
+                            setUpdatedTo(end ? end.format("YYYY-MM-DD") : "");
                             setPage(1);
                         }}
                         className="min-w-[220px]"
