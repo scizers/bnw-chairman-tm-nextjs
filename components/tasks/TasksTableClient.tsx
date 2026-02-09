@@ -2,11 +2,12 @@
 
 import {useEffect, useMemo, useRef, useState} from "react";
 import {usePathname, useRouter, useSearchParams} from "next/navigation";
-import {Avatar, Button, DatePicker, Input, Select, Table, Tooltip} from "antd";
-import {EyeOutlined} from "@ant-design/icons";
+import {Avatar, Button, Checkbox, DatePicker, Drawer, Input, Select, Table, Tooltip} from "antd";
+import {EyeOutlined, SettingOutlined} from "@ant-design/icons";
 import type {ColumnsType} from "antd/es/table";
 import type {SorterResult} from "antd/es/table/interface";
 import dayjs from "dayjs";
+import clsx from "clsx";
 import StatusBadge from "@/components/common/StatusBadge";
 import TaskStatusBadge from "@/components/common/TaskStatusBadge";
 import type {Task} from "@/types/task";
@@ -14,6 +15,8 @@ import type {TeamMember} from "@/types/team";
 import {formatDate, formatDateTime, formatRelative} from "@/lib/utils/format";
 import type {TaskListMeta, TaskListQuery} from "@/lib/api/tasks";
 import {resolveTeamMemberId} from "@/lib/utils/task";
+import { departmentsApi } from "@/lib/api/departments";
+import type { Department } from "@/types/department";
 
 interface TasksTableClientProps {
     tasks: Task[];
@@ -55,6 +58,13 @@ const PRIORITY_OPTIONS = [
     {value: "medium", label: "Medium"},
     {value: "high", label: "High"},
     {value: "critical", label: "Critical"}
+];
+
+const COLUMN_SIZE_OPTIONS = [
+    {value: 140, label: "Compact"},
+    {value: 200, label: "Standard"},
+    {value: 260, label: "Wide"},
+    {value: 320, label: "Extra wide"}
 ];
 
 const formatShortDate = (value?: string) => {
@@ -114,9 +124,11 @@ export default function TasksTableClient({
                                              onViewTask,
                                              onEditTask,
                                              onTaskStatusUpdated,
-                                             showResetFilters = false
+                                         showResetFilters = false
                                          }: TasksTableClientProps) {
     const [isClient, setIsClient] = useState(false);
+    const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
+    const [draggingColumn, setDraggingColumn] = useState<string | null>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
@@ -184,6 +196,7 @@ export default function TasksTableClient({
         const value = Number(searchParams.get("pageSize") ?? String(DEFAULT_PAGE_SIZE));
         return PAGE_SIZE_OPTIONS.includes(value) ? value : DEFAULT_PAGE_SIZE;
     });
+    const [allDepartments, setAllDepartments] = useState<Department[]>([]);
     const resolvedPage = useUrlState ? page : controlledPage ?? page;
     const resolvedPageSize = useUrlState ? pageSize : controlledPageSize ?? pageSize;
     const lastEmittedQueryKey = useRef<string | null>(null);
@@ -194,6 +207,21 @@ export default function TasksTableClient({
         [forcedStatusFilter]
     );
 
+    const defaultColumnSettings = useMemo(
+        () => [
+            {id: "title", label: "Title", visible: true, width: 320},
+            {id: "assignedTo", label: "Assigned To", visible: true, width: 220},
+            {id: "dueDate", label: "Timeline", visible: true, width: 200},
+            {id: "updatedAt", label: "Last Activity", visible: true, width: 180},
+            {id: "updatedAtActual", label: "Updated", visible: true, width: 160},
+            {id: "createdAt", label: "Created", visible: true, width: 160},
+            {id: "actions", label: "Actions", visible: true, width: 90}
+        ],
+        []
+    );
+
+    const [columnSettings, setColumnSettings] = useState(defaultColumnSettings);
+
     useEffect(() => {
         setIsClient(true);
     }, []);
@@ -201,6 +229,36 @@ export default function TasksTableClient({
     const formatDateFallback = (value?: string) => {
         if (!value) return "";
         return value.split("T")[0] ?? value;
+    };
+
+    const orderedColumns = useMemo(() => {
+        const lookup = new Map(columnSettings.map((entry) => [entry.id, entry]));
+        const ordered = columnSettings.filter((entry) => entry.id !== "actions");
+        const actions = lookup.get("actions");
+        const visibleOrdered = ordered.filter((entry) => entry.visible);
+        if (actions?.visible !== false) {
+            visibleOrdered.push(actions ?? {id: "actions", label: "Actions", visible: true, width: 90});
+        }
+        return visibleOrdered;
+    }, [columnSettings]);
+
+    const updateColumnSetting = (id: string, updates: Partial<{ visible: boolean; width: number }>) => {
+        setColumnSettings((prev) =>
+            prev.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry))
+        );
+    };
+
+    const moveColumn = (fromId: string, toId: string) => {
+        if (fromId === "actions" || toId === "actions") return;
+        setColumnSettings((prev) => {
+            const next = [...prev];
+            const fromIndex = next.findIndex((entry) => entry.id === fromId);
+            const toIndex = next.findIndex((entry) => entry.id === toId);
+            if (fromIndex === -1 || toIndex === -1) return prev;
+            const [moved] = next.splice(fromIndex, 1);
+            next.splice(toIndex, 0, moved);
+            return next;
+        });
     };
 
     useEffect(() => {
@@ -246,6 +304,23 @@ export default function TasksTableClient({
             setPageSize(nextPageSize);
         }
     }, [searchParamsString, lockedMemberIds, lockedDepartment, useUrlState]);
+
+    useEffect(() => {
+        let active = true;
+        if (departmentOptionsOverride?.length) return;
+        const loadDepartments = async () => {
+            try {
+                const data = await departmentsApi.listAll();
+                if (active) setAllDepartments(data ?? []);
+            } catch {
+                if (active) setAllDepartments([]);
+            }
+        };
+        void loadDepartments();
+        return () => {
+            active = false;
+        };
+    }, [departmentOptionsOverride]);
 
     const urlQueryKey = useMemo(
         () =>
@@ -309,7 +384,7 @@ export default function TasksTableClient({
         setListParam("status", statusFilter);
         setListParam("priority", priorityFilter);
         setListParam("member", lockedMemberIds ?? memberFilter);
-        setListParam("department", lockedDepartment ?? departmentFilter);
+        setListParam("departmentId", lockedDepartment ?? departmentFilter);
         setParam("q", titleQuery.trim());
         setParam("createdFrom", createdFrom);
         setParam("createdTo", createdTo);
@@ -337,7 +412,7 @@ export default function TasksTableClient({
             query.assignedTo = normalizeList(lockedMemberIds ?? memberFilter).join(",");
         }
         if ((lockedDepartment ?? departmentFilter).length) {
-            query.department = normalizeList(lockedDepartment ?? departmentFilter).join(",");
+            query.departmentId = normalizeList(lockedDepartment ?? departmentFilter).join(",");
         }
         if (titleQuery.trim()) query.q = titleQuery.trim();
         if (createdFrom) query.createdFrom = createdFrom;
@@ -388,7 +463,7 @@ export default function TasksTableClient({
             query.assignedTo = normalizeList(lockedMemberIds ?? memberFilter).join(",");
         }
         if ((lockedDepartment ?? departmentFilter).length) {
-            query.department = normalizeList(lockedDepartment ?? departmentFilter).join(",");
+            query.departmentId = normalizeList(lockedDepartment ?? departmentFilter).join(",");
         }
         if (titleQuery.trim()) query.q = titleQuery.trim();
         if (createdFrom) query.createdFrom = createdFrom;
@@ -488,20 +563,50 @@ export default function TasksTableClient({
         if (departmentOptionsOverride?.length) {
             return departmentOptionsOverride;
         }
-        const names = new Set<string>();
+        const options = new Map<string, string>();
         let hasUnassigned = false;
-        teamMembers.forEach((member) => {
-            const department = member.department?.trim();
-            if (department) {
-                names.add(department);
-            } else {
+
+        if (allDepartments.length) {
+            allDepartments.forEach((dept) => {
+                const id = String(dept.id ?? dept._id ?? "").trim();
+                const name = dept?.name?.trim();
+                if (id && name) options.set(id, name);
+            });
+        } else {
+            teamMembers.forEach((member) => {
+                const name = member.department?.trim();
+                const id =
+                    typeof member.departmentId === "object" && member.departmentId !== null
+                        ? String((member.departmentId as { _id?: string; id?: string })._id ?? (member.departmentId as { _id?: string; id?: string }).id ?? "").trim()
+                        : String(member.departmentId ?? "").trim();
+                if (id && name) {
+                    if (!options.has(id)) options.set(id, name);
+                    return;
+                }
+                if (!id && !name) {
+                    hasUnassigned = true;
+                }
+            });
+        }
+
+        // Ensure current selection remains visible even if options shift.
+        (lockedDepartment ?? departmentFilter).forEach((value) => {
+            if (!value) return;
+            if (value === "unassigned") {
                 hasUnassigned = true;
+                return;
+            }
+            if (!options.has(value)) {
+                options.set(value, "Selected Department");
             }
         });
-        const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
-        if (hasUnassigned) sorted.push("Unassigned");
-        return sorted.map((dept) => ({value: dept, label: dept}));
-    }, [departmentOptionsOverride, teamMembers]);
+
+        const sorted = Array.from(options.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+        if (hasUnassigned) {
+            sorted.push(["unassigned", "Unassigned"]);
+        }
+        return sorted.map(([value, label]) => ({ value, label }));
+    }, [departmentOptionsOverride, teamMembers, allDepartments, departmentFilter, lockedDepartment]);
 
     const hasResettableFilters =
         Boolean(statusFilter.length) ||
@@ -557,6 +662,7 @@ export default function TasksTableClient({
             title: "Title",
             sorter: true,
             sortOrder: sortBy === "title" ? (sortDir === "asc" ? "ascend" : "descend") : null,
+            width: columnSettings.find((entry) => entry.id === "title")?.width,
             render: (row: Task) => {
                 const addedBy = resolveAddedByName(row);
                 return (
@@ -584,6 +690,7 @@ export default function TasksTableClient({
         {
             key: "assignedTo",
             title: "Assigned To",
+            width: columnSettings.find((entry) => entry.id === "assignedTo")?.width,
             render: (row: Task) => {
                 const name = row.assignedToName || "Unassigned";
                 const department =
@@ -613,6 +720,7 @@ export default function TasksTableClient({
             title: "Timeline",
             sorter: true,
             sortOrder: sortBy === "dueDate" ? (sortDir === "asc" ? "ascend" : "descend") : null,
+            width: columnSettings.find((entry) => entry.id === "dueDate")?.width,
             render: (row: Task) => {
                 const startLabel = isClient
                     ? formatShortDate(row.startDate)
@@ -658,6 +766,7 @@ export default function TasksTableClient({
             sorter: true,
             sortOrder:
                 sortBy === "updatedAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
+            width: columnSettings.find((entry) => entry.id === "updatedAt")?.width,
             render: (row: Task) => {
                 const timestamp = row.lastRemarkAt ?? row.updatedAt ?? row.createdAt;
                 const timeLabel = timestamp
@@ -681,6 +790,7 @@ export default function TasksTableClient({
             sorter: true,
             sortOrder:
                 sortBy === "updatedAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
+            width: columnSettings.find((entry) => entry.id === "updatedAtActual")?.width,
             render: (row: Task) => {
                 const timestamp = row.updatedAt;
                 const timeLabel = timestamp
@@ -704,6 +814,7 @@ export default function TasksTableClient({
             sorter: true,
             sortOrder:
                 sortBy === "createdAt" ? (sortDir === "asc" ? "ascend" : "descend") : null,
+            width: columnSettings.find((entry) => entry.id === "createdAt")?.width,
             render: (row: Task) => {
                 const timestamp = row.createdAt;
                 const timeLabel = timestamp
@@ -725,6 +836,8 @@ export default function TasksTableClient({
             key: "actions",
             title: "",
             align: "right",
+            fixed: "right",
+            width: columnSettings.find((entry) => entry.id === "actions")?.width ?? 90,
             render: (row: Task) => (
                 <Tooltip title="View">
                     <Button
@@ -914,12 +1027,20 @@ export default function TasksTableClient({
                                 Reload
                             </Button>
                         ) : null}
+                        <Button
+                            type="default"
+                            icon={<SettingOutlined />}
+                            onClick={() => setIsColumnPanelOpen(true)}
+                            className="rounded-full border-border-subtle"
+                        >
+                            Columns
+                        </Button>
                     </div>
                 ) : null}
             </div>
 
             <Table
-                columns={columns}
+                columns={orderedColumns.map((entry) => columns.find((col) => col.key === entry.id)).filter(Boolean) as ColumnsType<Task>}
                 dataSource={tasks}
                 rowKey={(record) => record.id ?? record._id ?? `${record.title}-${record.dueDate ?? ""}`}
                 locale={{emptyText: "No tasks match the current filters."}}
@@ -975,14 +1096,69 @@ export default function TasksTableClient({
                         setSortDir(sorterOrder === "ascend" ? "asc" : "desc");
                         setPage(1);
                     }
-                    if (!useUrlState) {
-                        const overridePage = sorterOrder ? 1 : nextPageValue;
-                        const nextQuery = buildQuery({page: overridePage, pageSize: nextPageSize});
-                        lastEmittedQueryKey.current = JSON.stringify(nextQuery);
-                        onQueryChange?.(nextQuery);
-                    }
+                        if (!useUrlState) {
+                            const overridePage = sorterOrder ? 1 : nextPageValue;
+                            const nextQuery = buildQuery({page: overridePage, pageSize: nextPageSize});
+                            lastEmittedQueryKey.current = JSON.stringify(nextQuery);
+                            onQueryChange?.(nextQuery);
+                        }
                 }}
             />
+
+            <Drawer
+                title="Table Columns"
+                placement="right"
+                open={isColumnPanelOpen}
+                onClose={() => setIsColumnPanelOpen(false)}
+                size="default"
+            >
+                <div className="space-y-3">
+                    {columnSettings.map((entry) => {
+                        const isActions = entry.id === "actions";
+                        return (
+                            <div
+                                key={entry.id}
+                                className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-muted p-3"
+                                draggable={!isActions}
+                                onDragStart={() => setDraggingColumn(entry.id)}
+                                onDragOver={(event) => {
+                                    if (isActions) return;
+                                    event.preventDefault();
+                                }}
+                                onDrop={() => {
+                                    if (!draggingColumn || draggingColumn === entry.id) return;
+                                    moveColumn(draggingColumn, entry.id);
+                                    setDraggingColumn(null);
+                                }}
+                                onDragEnd={() => setDraggingColumn(null)}
+                            >
+                                <span className={clsx("text-lg text-text-muted", isActions && "opacity-40")}>
+                                    ☰
+                                </span>
+                                <Checkbox
+                                    checked={entry.visible}
+                                    disabled={isActions}
+                                    onChange={(event) =>
+                                        updateColumnSetting(entry.id, { visible: event.target.checked })
+                                    }
+                                >
+                                    {entry.label}
+                                </Checkbox>
+                                <Select
+                                    value={entry.width}
+                                    onChange={(value) => updateColumnSetting(entry.id, { width: Number(value) })}
+                                    options={COLUMN_SIZE_OPTIONS}
+                                    className="ml-auto min-w-[140px]"
+                                    disabled={isActions}
+                                />
+                            </div>
+                        );
+                    })}
+                    <p className="text-xs text-text-muted">
+                        Drag to reorder. Action column stays fixed on the right.
+                    </p>
+                </div>
+            </Drawer>
         </div>
     );
 }

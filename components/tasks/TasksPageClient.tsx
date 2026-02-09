@@ -262,23 +262,6 @@ export default function TasksPageClient({ mode = "all" }: TasksPageClientProps) 
     Boolean(query.updatedTo);
 
   const totalTasks = pagination?.total ?? tasks.length;
-  if (!totalTasks && !hasActiveFilters) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Task Center</p>
-          <h2 className="mt-2 font-display text-3xl text-text-primary">
-            {headerTitle} (0)
-          </h2>
-          <p className="mt-2 text-sm text-text-muted">{headerDescription}</p>
-        </div>
-        <EmptyState
-          title={emptyTitle}
-          description={emptyDescription}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -321,6 +304,12 @@ export default function TasksPageClient({ mode = "all" }: TasksPageClientProps) 
           }));
         }}
       />
+      {!totalTasks && !loading ? (
+        <EmptyState
+          title={emptyTitle}
+          description={emptyDescription}
+        />
+      ) : null}
     </div>
   );
 }
