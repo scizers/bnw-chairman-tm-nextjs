@@ -129,12 +129,9 @@ export default function TasksTableClient({
     const LOADING_DELAY_MS = 200;
     const LOADING_MIN_VISIBLE_MS = 300;
     const [isClient, setIsClient] = useState(false);
-<<<<<<< HEAD
     const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
     const [draggingColumn, setDraggingColumn] = useState<string | null>(null);
-=======
     const [showLoading, setShowLoading] = useState(false);
->>>>>>> f83977f5b11a916fb08687c1890029a699d7137a
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
@@ -1039,23 +1036,6 @@ export default function TasksTableClient({
                     options={PRIORITY_OPTIONS}
                     className="min-w-[180px]"
                 />
-                {hideDepartmentFilter || lockedDepartment ? null : (
-                    <Select
-                        mode="multiple"
-                        allowClear
-                        showSearch
-                        optionFilterProp="label"
-                        maxTagCount="responsive"
-                        placeholder="All Departments"
-                        value={departmentFilter}
-                        onChange={(values) => {
-                            setDepartmentFilter(values);
-                            setPage(1);
-                        }}
-                        options={departmentOptions}
-                        className="min-w-[200px]"
-                    />
-                )}
                 {hideMemberFilter || lockedMemberIds ? null : (
                     <Select
                         mode="multiple"
@@ -1073,6 +1053,27 @@ export default function TasksTableClient({
                         className="min-w-[220px]"
                     />
                 )}
+
+                <br />
+                {hideDepartmentFilter || lockedDepartment ? null : (
+                    <Select
+                        mode="multiple"
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        maxTagCount="responsive"
+                        placeholder="All Departments"
+                        value={departmentFilter}
+                        onChange={(values) => {
+                            setDepartmentFilter(values);
+                            setPage(1);
+                        }}
+                        options={departmentOptions}
+                        className="min-w-[200px]"
+                    />
+                )}
+
+
                 {showResetFilters || onReload ? (
                     <div className="ml-auto flex items-center gap-2">
                         {showResetFilters ? (
