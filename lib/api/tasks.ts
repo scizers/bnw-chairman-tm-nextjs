@@ -10,6 +10,8 @@ export interface TaskListQuery {
   q?: string;
   dueFrom?: string;
   dueTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
   archived?: string | boolean;
   sortBy?: string;
   sortDir?: string;

@@ -119,7 +119,7 @@ export default function SalesReportsPageClient() {
       <div className="space-y-6">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Sales Reports</p>
-          <h2 className="mt-2 font-display text-3xl text-text-primary">Daily Reports (0)</h2>
+          <h2 className="mt-2 font-display text-3xl text-text-primary">Daily Sales Reports (0)</h2>
           <p className="mt-2 text-sm text-text-muted">
             Track daily performance across sales leaders.
           </p>
@@ -136,7 +136,7 @@ export default function SalesReportsPageClient() {
       <div className="space-y-6">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Sales Reports</p>
-          <h2 className="mt-2 font-display text-3xl text-text-primary">Daily Reports (0)</h2>
+          <h2 className="mt-2 font-display text-3xl text-text-primary">Daily Sales Reports (0)</h2>
           <p className="mt-2 text-sm text-text-muted">
             Track daily performance across sales leaders.
           </p>
@@ -155,7 +155,7 @@ export default function SalesReportsPageClient() {
       <div className="space-y-6">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Sales Reports</p>
-          <h2 className="mt-2 font-display text-3xl text-text-primary">Daily Reports (0)</h2>
+          <h2 className="mt-2 font-display text-3xl text-text-primary">Daily Sales Reports (0)</h2>
           <p className="mt-2 text-sm text-text-muted">
             Track daily performance across sales leaders.
           </p>
@@ -280,7 +280,7 @@ export default function SalesReportsPageClient() {
       <div>
         <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Sales Reports</p>
         <h2 className="mt-2 font-display text-3xl text-text-primary">
-          Daily Reports ({reports.length})
+          Daily Sales Reports ({reports.length})
         </h2>
         <p className="mt-2 text-sm text-text-muted">
           Track daily performance across sales leaders.
