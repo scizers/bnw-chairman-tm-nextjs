@@ -13,6 +13,7 @@ import type { User } from "@/types/user";
 interface UserFormState {
   name: string;
   email: string;
+  whatsappNumber: string;
   role: string;
   isActive: boolean;
   canAddUsers: boolean;
@@ -30,6 +31,7 @@ const resolveUserId = (user: User) => String(user.id ?? user._id ?? "");
 const createEmptyForm = (): UserFormState => ({
   name: "",
   email: "",
+  whatsappNumber: "",
   role: "executive",
   isActive: true,
   canAddUsers: false,
@@ -72,7 +74,7 @@ export default function UsersPageClient() {
     const query = search.trim().toLowerCase();
     if (!query) return users;
     return users.filter((user) => {
-      const haystack = [user.name, user.email, user.role]
+      const haystack = [user.name, user.email, user.whatsappNumber, user.role]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -91,6 +93,7 @@ export default function UsersPageClient() {
     setForm({
       name: user.name ?? "",
       email: user.email ?? "",
+      whatsappNumber: user.whatsappNumber ?? "",
       role: user.role ?? "executive",
       isActive: Boolean(user.isActive ?? true),
       canAddUsers: Boolean(user.canAddUsers ?? false),
@@ -121,6 +124,7 @@ export default function UsersPageClient() {
       const payload: Partial<User> & { password?: string } = {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
+        whatsappNumber: form.whatsappNumber.trim(),
         role: form.role,
         isActive: form.isActive,
         canAddUsers: form.canAddUsers
@@ -211,6 +215,9 @@ export default function UsersPageClient() {
         <div>
           <p className="font-semibold text-text-primary">{row.name}</p>
           <p className="text-xs text-text-muted">{row.email}</p>
+          {row.whatsappNumber ? (
+            <p className="text-xs text-text-muted">WhatsApp: {row.whatsappNumber}</p>
+          ) : null}
         </div>
       )
     },
@@ -335,6 +342,18 @@ export default function UsersPageClient() {
             {form.email.trim().length > 0 && !isValidEmail(form.email) ? (
               <p className="mt-2 text-xs text-rose-300">Enter a valid email address.</p>
             ) : null}
+          </div>
+          <div>
+            <label className="text-xs uppercase tracking-[0.2em] text-text-muted">
+              WhatsApp Number
+            </label>
+            <Input
+              value={form.whatsappNumber}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, whatsappNumber: event.target.value }))
+              }
+              placeholder="+15551234567"
+            />
           </div>
           <div>
             <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Role</label>

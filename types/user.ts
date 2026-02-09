@@ -3,6 +3,7 @@ export interface User {
   _id?: string;
   name: string;
   email: string;
+  whatsappNumber?: string;
   role?: string;
   isActive?: boolean;
   canAddUsers?: boolean;
