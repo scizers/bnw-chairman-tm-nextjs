@@ -107,7 +107,7 @@ export default function TasksTableClient({
                                              tasks,
                                              teamMembers,
                                              pagination,
-                                             loading,
+                                             loading: loadingProp,
                                              onReload,
                                              hideMemberFilter,
                                              hideDepartmentFilter,
@@ -126,9 +126,15 @@ export default function TasksTableClient({
                                              onTaskStatusUpdated,
                                          showResetFilters = false
                                          }: TasksTableClientProps) {
+    const LOADING_DELAY_MS = 200;
+    const LOADING_MIN_VISIBLE_MS = 300;
     const [isClient, setIsClient] = useState(false);
+<<<<<<< HEAD
     const [isColumnPanelOpen, setIsColumnPanelOpen] = useState(false);
     const [draggingColumn, setDraggingColumn] = useState<string | null>(null);
+=======
+    const [showLoading, setShowLoading] = useState(false);
+>>>>>>> f83977f5b11a916fb08687c1890029a699d7137a
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
@@ -202,6 +208,10 @@ export default function TasksTableClient({
     const lastEmittedQueryKey = useRef<string | null>(null);
     const lastAppliedForcedStatus = useRef<string | null>(null);
     const didInitRef = useRef(false);
+    const showLoadingRef = useRef(false);
+    const loadingShownAtRef = useRef<number | null>(null);
+    const showLoadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hideLoadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const resolvedForcedStatus = useMemo(
         () => (forcedStatusFilter?.length ? normalizeList(forcedStatusFilter) : []),
         [forcedStatusFilter]
@@ -224,6 +234,63 @@ export default function TasksTableClient({
 
     useEffect(() => {
         setIsClient(true);
+    }, []);
+
+    useEffect(() => {
+        const isLoading = Boolean(loadingProp);
+        const setShowLoadingSafe = (value: boolean) => {
+            showLoadingRef.current = value;
+            setShowLoading(value);
+        };
+
+        if (isLoading) {
+            if (hideLoadingTimerRef.current) {
+                clearTimeout(hideLoadingTimerRef.current);
+                hideLoadingTimerRef.current = null;
+            }
+            if (!showLoadingRef.current && !showLoadingTimerRef.current) {
+                showLoadingTimerRef.current = setTimeout(() => {
+                    loadingShownAtRef.current = Date.now();
+                    showLoadingTimerRef.current = null;
+                    setShowLoadingSafe(true);
+                }, LOADING_DELAY_MS);
+            }
+            return;
+        }
+
+        if (showLoadingTimerRef.current) {
+            clearTimeout(showLoadingTimerRef.current);
+            showLoadingTimerRef.current = null;
+        }
+
+        if (showLoadingRef.current) {
+            const shownAt = loadingShownAtRef.current ?? Date.now();
+            const elapsed = Date.now() - shownAt;
+            const remaining = LOADING_MIN_VISIBLE_MS - elapsed;
+            if (remaining > 0) {
+                hideLoadingTimerRef.current = setTimeout(() => {
+                    hideLoadingTimerRef.current = null;
+                    loadingShownAtRef.current = null;
+                    setShowLoadingSafe(false);
+                }, remaining);
+            } else {
+                loadingShownAtRef.current = null;
+                setShowLoadingSafe(false);
+            }
+        }
+    }, [loadingProp]);
+
+    useEffect(() => {
+        return () => {
+            if (showLoadingTimerRef.current) {
+                clearTimeout(showLoadingTimerRef.current);
+                showLoadingTimerRef.current = null;
+            }
+            if (hideLoadingTimerRef.current) {
+                clearTimeout(hideLoadingTimerRef.current);
+                hideLoadingTimerRef.current = null;
+            }
+        };
     }, []);
 
     const formatDateFallback = (value?: string) => {
@@ -653,7 +720,7 @@ export default function TasksTableClient({
             onViewTask(taskId);
             return;
         }
-        router.push(`/tasks/${taskId}`);
+        window.open(`/tasks/${taskId}`, "_blank", "noopener,noreferrer");
     };
 
     const columns: ColumnsType<Task> = [
@@ -1044,7 +1111,7 @@ export default function TasksTableClient({
                 dataSource={tasks}
                 rowKey={(record) => record.id ?? record._id ?? `${record.title}-${record.dueDate ?? ""}`}
                 locale={{emptyText: "No tasks match the current filters."}}
-                loading={loading}
+                loading={showLoading}
                 size="small"
                 rowClassName={() => "cursor-pointer"}
                 pagination={{
