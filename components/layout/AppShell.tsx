@@ -11,6 +11,50 @@ interface AppShellProps {
 }
 
 const AUTH_ROUTES = new Set(["/login", "/forgot-password", "/reset-password"]);
+const TITLE_SUFFIX = " · Chairman Office";
+const EXACT_TITLES: Record<string, string> = {
+  "/": "Chairman Office",
+  "/dashboard": "Dashboard",
+  "/sales-reports": "Daily Sales Reports",
+  "/sales-reports/new": "New Daily Sales Report",
+  "/tasks": "Tasks",
+  "/tasks/new": "New Task",
+  "/tasks/my": "My Tasks",
+  "/tasks/archive": "Archived Tasks",
+  "/departments": "Departments",
+  "/reports": "Reports",
+  "/team": "Team",
+  "/team/new": "New Team Member",
+  "/users": "Users",
+  "/audit-logs": "Audit Logs",
+  "/settings": "Settings",
+  "/moms": "MOMs",
+  "/moms/new": "New MOM",
+  "/login": "Login",
+  "/forgot-password": "Forgot Password",
+  "/reset-password": "Reset Password"
+};
+const TITLE_PATTERNS: Array<{ pattern: RegExp; title: string }> = [
+  { pattern: /^\/sales-reports\/[^/]+\/edit$/, title: "Edit Daily Sales Report" },
+  { pattern: /^\/sales-reports\/[^/]+$/, title: "Daily Sales Report" },
+  { pattern: /^\/tasks\/[^/]+\/edit$/, title: "Edit Task" },
+  { pattern: /^\/tasks\/[^/]+$/, title: "Task Details" },
+  { pattern: /^\/moms\/[^/]+\/edit$/, title: "Edit MOM" },
+  { pattern: /^\/moms\/[^/]+$/, title: "MOM Details" },
+  { pattern: /^\/team\/[^/]+\/edit$/, title: "Edit Team Member" },
+  { pattern: /^\/team\/[^/]+$/, title: "Team Member" },
+  { pattern: /^\/departments\/[^/]+$/, title: "Department" }
+];
+
+const resolvePageTitle = (pathname: string | null) => {
+  if (!pathname) return "Chairman Office";
+  const normalized =
+    pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  const exact = EXACT_TITLES[normalized];
+  if (exact) return exact;
+  const match = TITLE_PATTERNS.find((entry) => entry.pattern.test(normalized));
+  return match?.title ?? "Chairman Office";
+};
 
 export default function AppShell({ children }: AppShellProps) {
   const router = useRouter();
@@ -33,6 +77,12 @@ export default function AppShell({ children }: AppShellProps) {
       router.replace(destination);
     }
   }, [router, shouldRedirect, shouldRedirectUsers]);
+
+  useEffect(() => {
+    const pageTitle = resolvePageTitle(pathname);
+    document.title =
+      pageTitle === "Chairman Office" ? pageTitle : `${pageTitle}${TITLE_SUFFIX}`;
+  }, [pathname]);
 
   if (isAuthRoute) {
     return <>{children}</>;
