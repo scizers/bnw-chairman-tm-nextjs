@@ -33,11 +33,9 @@ const computeTotals = (report: DailySalesReport) => {
     cpMeetingsChannelPartner: 0,
     salesAchievedAED: 0
   };
-  let totalSalesCount = 0;
 
   report.salesHeads?.forEach((head) => {
     const directors = head.directors || [];
-    totalSalesCount += directors.length;
     directors.forEach((director) => {
       const metrics = director.metrics || ({} as SalesReportGrandTotals);
       totals.activeTeamMembers += normalizeMetric(metrics.activeTeamMembers);
@@ -48,7 +46,7 @@ const computeTotals = (report: DailySalesReport) => {
     });
   });
 
-  return { totals, totalSalesCount };
+  return { totals };
 };
 
 const resolveReportId = (report: DailySalesReport) => report.id ?? report._id ?? "";
@@ -196,11 +194,12 @@ export default function SalesReportsPageClient() {
       }
     },
     {
-      key: "totalSalesCount",
-      title: "Total Sales Count#",
+      key: "activeTeamMembers",
+      title: "Active Team Members",
       render: (_value, row) => {
         const derived = computeTotals(row);
-        return formatNumber(derived.totalSalesCount);
+        const totals = row.grandTotals ?? derived.totals;
+        return formatNumber(totals.activeTeamMembers ?? derived.totals.activeTeamMembers);
       }
     },
     {
