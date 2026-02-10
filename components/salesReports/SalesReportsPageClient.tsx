@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { App, Button, Popconfirm, Space, Table, Tooltip } from "antd";
+import { App, Button, DatePicker, Pagination, Popconfirm, Space, Table, Tooltip } from "antd";
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
@@ -11,6 +11,8 @@ import EmptyState from "@/components/common/EmptyState";
 import { salesReportsApi } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
 import type { DailySalesReport, SalesReportGrandTotals } from "@/types/salesReport";
+import type { SalesReportListMeta, SalesReportListQuery } from "@/lib/api/salesReports";
+import dayjs from "dayjs";
 
 const formatNumber = (value?: number) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) return "-";
@@ -60,6 +62,17 @@ export default function SalesReportsPageClient() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<SalesReportListMeta | null>(null);
+  const [query, setQuery] = useState<SalesReportListQuery>({
+    sortBy: "reportDate",
+    sortDir: "desc"
+  });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [reportDateFrom, setReportDateFrom] = useState("");
+  const [reportDateTo, setReportDateTo] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const toastHandledRef = useRef<{ saved?: string | null; updated?: string | null }>({});
   // Use the global message API to avoid duplicate holders in the tree.
 
@@ -67,19 +80,28 @@ export default function SalesReportsPageClient() {
     setLoading(true);
     setError(null);
     try {
-      const data = await salesReportsApi.list();
-      setReports(data ?? []);
+      const response = await salesReportsApi.list({ ...query, page, pageSize });
+      if (Array.isArray(response)) {
+        setReports(response ?? []);
+        setPagination(null);
+      } else {
+        setReports(response?.data ?? []);
+        setPagination(response?.meta ?? null);
+      }
     } catch (err) {
       setError("Unable to load sales reports.");
     } finally {
       setLoading(false);
       setHasLoaded(true);
     }
-  }, []);
+  }, [query, page, pageSize]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const timer = setTimeout(() => {
+      void load();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query, load]);
 
   useEffect(() => {
     const saved = searchParams?.get("saved");
@@ -148,39 +170,15 @@ export default function SalesReportsPageClient() {
     );
   }
 
-  if (!reports.length) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Sales Reports</p>
-          <h2 className="mt-2 font-display text-3xl text-text-primary">Daily Sales Reports (0)</h2>
-          <p className="mt-2 text-sm text-text-muted">
-            Track daily performance across sales leaders.
-          </p>
-        </div>
-        <EmptyState
-          title="No daily sales reports"
-          description="Create the first report to start tracking results."
-        />
-        <span className="fixed bottom-6 right-6">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push("/sales-reports/new")}
-            className="rounded-full shadow-soft"
-          >
-            Add Daily Sales Report
-          </Button>
-        </span>
-      </div>
-    );
-  }
-
   const columns: ColumnsType<DailySalesReport> = [
     {
       key: "reportDate",
+      columnKey: "reportDate",
       dataIndex: "reportDate",
       title: "Report Date",
+      sorter: true,
+      sortOrder:
+        query.sortBy === "reportDate" ? (query.sortDir === "asc" ? "ascend" : "descend") : null,
       render: (_value, row) =>
         row.reportDate ? formatDate(`${row.reportDate}T00:00:00`) : "-"
     },
@@ -217,8 +215,12 @@ export default function SalesReportsPageClient() {
     },
     {
       key: "createdAt",
+      columnKey: "createdAt",
       dataIndex: "createdAt",
       title: "Created At",
+      sorter: true,
+      sortOrder:
+        query.sortBy === "createdAt" ? (query.sortDir === "asc" ? "ascend" : "descend") : null,
       render: (_value, row) => formatDateTime(row.createdAt)
     },
     {
@@ -279,11 +281,100 @@ export default function SalesReportsPageClient() {
       <div>
         <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Sales Reports</p>
         <h2 className="mt-2 font-display text-3xl text-text-primary">
-          Daily Sales Reports ({reports.length})
+          Daily Sales Reports ({pagination?.total ?? reports.length})
         </h2>
         <p className="mt-2 text-sm text-text-muted">
           Track daily performance across sales leaders.
         </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-[0.2em] text-text-muted">
+            Report Date
+          </span>
+          <DatePicker.RangePicker
+            value={
+              reportDateFrom || reportDateTo
+                ? [
+                    reportDateFrom ? dayjs(reportDateFrom) : null,
+                    reportDateTo ? dayjs(reportDateTo) : null
+                  ]
+                : null
+            }
+            onChange={(dates) => {
+              const [start, end] = Array.isArray(dates) ? dates : [];
+              const nextFrom = start ? start.format("YYYY-MM-DD") : "";
+              const nextTo = end ? end.format("YYYY-MM-DD") : "";
+              setReportDateFrom(nextFrom);
+              setReportDateTo(nextTo);
+              setQuery((prev) => ({
+                ...prev,
+                reportDateFrom: nextFrom || undefined,
+                reportDateTo: nextTo || undefined
+              }));
+              setPage(1);
+            }}
+            className="min-w-[240px]"
+            allowClear
+            format="YYYY-MM-DD"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-[0.2em] text-text-muted">
+            Created
+          </span>
+          <DatePicker.RangePicker
+            value={
+              createdFrom || createdTo
+                ? [
+                    createdFrom ? dayjs(createdFrom) : null,
+                    createdTo ? dayjs(createdTo) : null
+                  ]
+                : null
+            }
+            onChange={(dates) => {
+              const [start, end] = Array.isArray(dates) ? dates : [];
+              const nextFrom = start ? start.format("YYYY-MM-DD") : "";
+              const nextTo = end ? end.format("YYYY-MM-DD") : "";
+              setCreatedFrom(nextFrom);
+              setCreatedTo(nextTo);
+              setQuery((prev) => ({
+                ...prev,
+                createdFrom: nextFrom || undefined,
+                createdTo: nextTo || undefined
+              }));
+              setPage(1);
+            }}
+            className="min-w-[240px]"
+            allowClear
+            format="YYYY-MM-DD"
+          />
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            type="default"
+            onClick={() => {
+              setReportDateFrom("");
+              setReportDateTo("");
+              setCreatedFrom("");
+              setCreatedTo("");
+              setQuery({ sortBy: "reportDate", sortDir: "desc" });
+              setPage(1);
+              setPageSize(10);
+            }}
+            className="rounded-full border-border-subtle"
+          >
+            Reset
+          </Button>
+          <Button
+            type="default"
+            onClick={load}
+            className="rounded-full border-border-subtle"
+          >
+            Reload
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl bg-surface-card p-6 shadow-card">
@@ -292,9 +383,52 @@ export default function SalesReportsPageClient() {
           dataSource={reports}
           rowKey={(record) => resolveReportId(record) || record.reportDate}
           locale={{ emptyText: "No sales reports yet." }}
-          pagination={{ pageSize: 10 }}
+          pagination={false}
+          loading={loading}
+          onChange={(_pager, _filters, sorter) => {
+            const normalizedSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+            const sorterKey =
+              typeof normalizedSorter?.columnKey === "string"
+                ? normalizedSorter.columnKey
+                : typeof normalizedSorter?.field === "string"
+                  ? normalizedSorter.field
+                  : null;
+            const sorterOrder = normalizedSorter?.order;
+            if (sorterOrder && (sorterKey === "reportDate" || sorterKey === "createdAt")) {
+              setQuery((prev) => ({
+                ...prev,
+                sortBy: sorterKey as SalesReportListQuery["sortBy"],
+                sortDir: sorterOrder === "ascend" ? "asc" : "desc"
+              }));
+              setPage(1);
+              return;
+            }
+          }}
         />
+        {pagination?.total && pagination.total > 0 ? (
+          <div className="mt-4 flex justify-end">
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={pagination.total}
+              showSizeChanger
+              pageSizeOptions={["10", "20", "50"]}
+              onChange={(nextPage, nextPageSize) => {
+                const resolvedSize = nextPageSize ?? pageSize;
+                setPage(resolvedSize !== pageSize ? 1 : nextPage);
+                setPageSize(resolvedSize);
+              }}
+            />
+          </div>
+        ) : null}
       </div>
+
+      {!reports.length && !loading ? (
+        <EmptyState
+          title="No daily sales reports"
+          description="Create the first report to start tracking results."
+        />
+      ) : null}
 
       <span className="fixed bottom-6 right-6">
         <Button

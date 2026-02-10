@@ -1,13 +1,34 @@
 import { clientApi } from "@/lib/api/client";
 import type { DailySalesReport } from "@/types/salesReport";
 
+export interface SalesReportListQuery {
+  reportDateFrom?: string;
+  reportDateTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sortBy?: "reportDate" | "createdAt";
+  sortDir?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface SalesReportListMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 type SalesReportPrefill = {
   salesHeads?: DailySalesReport["salesHeads"];
 };
 
 export const salesReportsApi = {
-  list: async () => {
-    const { data } = await clientApi.get<DailySalesReport[]>("/sales-reports");
+  list: async (params?: SalesReportListQuery) => {
+    const { data } = await clientApi.get<{
+      data: DailySalesReport[];
+      meta: SalesReportListMeta;
+    }>("/sales-reports", { params });
     return data;
   },
   prefill: async () => {
