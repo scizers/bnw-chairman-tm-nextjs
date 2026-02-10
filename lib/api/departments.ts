@@ -15,6 +15,11 @@ export interface DepartmentListMeta {
   total: number;
 }
 
+export interface CreateDepartmentPayload {
+  name: string;
+  description?: string;
+}
+
 export const departmentsApi = {
   listAll: async () => {
     const { data } = await clientApi.get<Department[]>("/departments/all");
@@ -29,6 +34,10 @@ export const departmentsApi = {
       "/departments",
       { params: query }
     );
+    return data;
+  },
+  create: async (payload: CreateDepartmentPayload) => {
+    const { data } = await clientApi.post<Department>("/departments", payload);
     return data;
   }
 };

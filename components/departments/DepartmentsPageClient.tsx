@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Input, Table } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { App, Button, Input, Modal, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
@@ -12,7 +13,20 @@ import { departmentsApi } from "@/lib/api";
 import type { DepartmentSummary } from "@/types/department";
 import type { DepartmentListMeta, DepartmentListQuery } from "@/lib/api/departments";
 
+const extractApiError = (err: unknown, fallback: string) => {
+  const error = err as { response?: { data?: { error?: string } }; message?: string };
+  const apiMessage = error?.response?.data?.error;
+  if (typeof apiMessage === "string" && apiMessage.trim()) {
+    return apiMessage;
+  }
+  if (typeof error?.message === "string" && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+};
+
 export default function DepartmentsPageClient() {
+  const { message } = App.useApp();
   const router = useRouter();
   const [departments, setDepartments] = useState<DepartmentSummary[]>([]);
   const [pagination, setPagination] = useState<DepartmentListMeta | null>(null);
@@ -26,8 +40,13 @@ export default function DepartmentsPageClient() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [newDepartmentDescription, setNewDepartmentDescription] = useState("");
   const queryKey = useMemo(() => JSON.stringify(query), [query]);
   const queryRef = useRef(query);
+  const canCreateDepartment = useMemo(() => Boolean(newDepartmentName.trim()), [newDepartmentName]);
 
   useEffect(() => {
     queryRef.current = query;
@@ -85,6 +104,37 @@ export default function DepartmentsPageClient() {
     return () => clearTimeout(timer);
   }, [queryKey, load]);
 
+  const openCreateModal = () => {
+    setNewDepartmentName("");
+    setNewDepartmentDescription("");
+    setCreateModalOpen(true);
+  };
+
+  const closeCreateModal = (force = false) => {
+    if (creating && !force) return;
+    setCreateModalOpen(false);
+    setNewDepartmentName("");
+    setNewDepartmentDescription("");
+  };
+
+  const handleCreateDepartment = async () => {
+    if (!canCreateDepartment) return;
+    setCreating(true);
+    try {
+      await departmentsApi.create({
+        name: newDepartmentName.trim(),
+        description: newDepartmentDescription.trim() || undefined
+      });
+      message.success("Department created.");
+      closeCreateModal(true);
+      await load();
+    } catch (err) {
+      message.error(extractApiError(err, "Unable to create department."));
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading && !hasLoaded) {
     return (
       <div className="rounded-xl bg-surface-card p-6 shadow-card">
@@ -101,10 +151,20 @@ export default function DepartmentsPageClient() {
 
   if (!departments.length && !hasActiveFilters) {
     return (
-      <EmptyState
-        title="No departments yet"
-        description="Add team members with departments to see the breakdown."
-      />
+      <div className="space-y-4">
+        <EmptyState
+          title="No departments yet"
+          description="Add team members with departments to see the breakdown."
+        />
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={openCreateModal}
+          className="rounded-full shadow-soft"
+        >
+          Add Department
+        </Button>
+      </div>
     );
   }
 
@@ -180,7 +240,7 @@ export default function DepartmentsPageClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Input
           value={search}
           onChange={(event) => {
@@ -197,6 +257,14 @@ export default function DepartmentsPageClient() {
           placeholder="Search department"
           className="min-w-[220px] flex-1"
         />
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={openCreateModal}
+          className="rounded-full shadow-soft"
+        >
+          Add Department
+        </Button>
       </div>
 
       <Table
@@ -249,6 +317,39 @@ export default function DepartmentsPageClient() {
           }));
         }}
       />
+
+      <Modal
+        title="Add Department"
+        open={createModalOpen}
+        onCancel={() => closeCreateModal()}
+        onOk={handleCreateDepartment}
+        okText="Create Department"
+        okButtonProps={{ disabled: !canCreateDepartment, loading: creating }}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs uppercase tracking-[0.2em] text-text-muted">Name</label>
+            <Input
+              value={newDepartmentName}
+              onChange={(event) => setNewDepartmentName(event.target.value)}
+              placeholder="Department name"
+              maxLength={120}
+            />
+          </div>
+          <div>
+            <label className="text-xs uppercase tracking-[0.2em] text-text-muted">
+              Description (optional)
+            </label>
+            <Input.TextArea
+              value={newDepartmentDescription}
+              onChange={(event) => setNewDepartmentDescription(event.target.value)}
+              placeholder="Short description"
+              rows={3}
+              maxLength={400}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
