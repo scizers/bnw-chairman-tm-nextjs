@@ -17,6 +17,7 @@ const EXACT_TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/sales-reports": "Daily Sales Reports",
   "/sales-reports/new": "New Daily Sales Report",
+  "/sales-reports/calendar": "Sales Reports Calendar",
   "/tasks": "Tasks",
   "/tasks/new": "New Task",
   "/tasks/my": "My Tasks",

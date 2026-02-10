@@ -50,7 +50,14 @@ const navItems: NavItem[] = [
     ]
   },
   { href: "/moms", label: "MOM", icon: ClipboardList },
-  { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
+  {
+    label: "Sales Reports",
+    icon: BarChart3,
+    children: [
+      { href: "/sales-reports", label: "All Sales Reports" },
+      { href: "/sales-reports/calendar", label: "Calendar View" }
+    ]
+  },
   { href: "/users", label: "Users", icon: UserRound },
   { href: "/audit-logs", label: "Audit Logs", icon: History },
   { href: "/team", label: "Team", icon: Users },
@@ -76,7 +83,8 @@ export default function Sidebar() {
   const visibleNavItems = useMemo(() => {
     if (role === "sales_report") {
       return navItems.filter(
-        (item): item is NavLinkItem => isNavLink(item) && item.href === "/sales-reports"
+        (item): item is NavGroupItem =>
+          !isNavLink(item) && item.label === "Sales Reports"
       );
     }
     if (canAddUsers === false) {
@@ -119,6 +127,19 @@ export default function Sidebar() {
                   pathname.startsWith("/tasks/") &&
                   !pathname.startsWith("/tasks/my") &&
                   !pathname.startsWith("/tasks/archive")
+                );
+              }
+              if (href === "/sales-reports") {
+                return (
+                  pathname === "/sales-reports" ||
+                  (pathname.startsWith("/sales-reports/") &&
+                    !pathname.startsWith("/sales-reports/calendar"))
+                );
+              }
+              if (href === "/sales-reports/calendar") {
+                return (
+                  pathname === "/sales-reports/calendar" ||
+                  pathname.startsWith("/sales-reports/calendar/")
                 );
               }
               return pathname.startsWith(`${href}/`);
