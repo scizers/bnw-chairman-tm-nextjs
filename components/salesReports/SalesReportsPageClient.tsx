@@ -173,7 +173,6 @@ export default function SalesReportsPageClient() {
   const columns: ColumnsType<DailySalesReport> = [
     {
       key: "reportDate",
-      columnKey: "reportDate",
       dataIndex: "reportDate",
       title: "Report Date",
       sorter: true,
@@ -215,7 +214,6 @@ export default function SalesReportsPageClient() {
     },
     {
       key: "createdAt",
-      columnKey: "createdAt",
       dataIndex: "createdAt",
       title: "Created At",
       sorter: true,
