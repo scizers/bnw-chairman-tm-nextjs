@@ -55,7 +55,8 @@ const navItems: NavItem[] = [
     icon: BarChart3,
     children: [
       { href: "/sales-reports", label: "All Sales Reports" },
-      { href: "/sales-reports/calendar", label: "Calendar View" }
+      { href: "/sales-reports/monthly", label: "Monthly View" },
+      { href: "/sales-reports/weekly", label: "Weekly View" }
     ]
   },
   { href: "/users", label: "Users", icon: UserRound },
@@ -133,13 +134,23 @@ export default function Sidebar() {
                 return (
                   pathname === "/sales-reports" ||
                   (pathname.startsWith("/sales-reports/") &&
-                    !pathname.startsWith("/sales-reports/calendar"))
+                    !pathname.startsWith("/sales-reports/calendar") &&
+                    !pathname.startsWith("/sales-reports/monthly") &&
+                    !pathname.startsWith("/sales-reports/weekly"))
                 );
               }
-              if (href === "/sales-reports/calendar") {
+              if (href === "/sales-reports/monthly") {
                 return (
+                  pathname === "/sales-reports/monthly" ||
+                  pathname.startsWith("/sales-reports/monthly/") ||
                   pathname === "/sales-reports/calendar" ||
                   pathname.startsWith("/sales-reports/calendar/")
+                );
+              }
+              if (href === "/sales-reports/weekly") {
+                return (
+                  pathname === "/sales-reports/weekly" ||
+                  pathname.startsWith("/sales-reports/weekly/")
                 );
               }
               return pathname.startsWith(`${href}/`);

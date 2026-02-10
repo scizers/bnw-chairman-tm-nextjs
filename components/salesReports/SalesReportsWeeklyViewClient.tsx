@@ -9,8 +9,6 @@ import EmptyState from "@/components/common/EmptyState";
 import { salesReportsApi } from "@/lib/api";
 import type { DailySalesReport, SalesReportGrandTotals } from "@/types/salesReport";
 
-const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 const formatNumber = (value?: number) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) return "-";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(
@@ -56,40 +54,40 @@ type ReportSummary = {
   reportIds: string[];
 };
 
-export default function SalesReportsCalendarClient() {
-  const [month, setMonth] = useState<Dayjs>(() => dayjs().startOf("month"));
+export default function SalesReportsWeeklyViewClient() {
+  const [weekStart, setWeekStart] = useState<Dayjs>(() => dayjs().startOf("week"));
   const [reports, setReports] = useState<DailySalesReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const monthRange = useMemo(() => {
-    const start = month.startOf("month");
-    const end = month.endOf("month");
+  const weekRange = useMemo(() => {
+    const start = weekStart.startOf("week");
+    const end = start.add(6, "day");
     return { start, end };
-  }, [month]);
+  }, [weekStart]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await salesReportsApi.list({
-        reportDateFrom: monthRange.start.format("YYYY-MM-DD"),
-        reportDateTo: monthRange.end.format("YYYY-MM-DD"),
+        reportDateFrom: weekRange.start.format("YYYY-MM-DD"),
+        reportDateTo: weekRange.end.format("YYYY-MM-DD"),
         sortBy: "reportDate",
         sortDir: "asc",
         page: 1,
-        pageSize: 200
+        pageSize: 50
       });
       const data = Array.isArray(response) ? response : response?.data ?? [];
       setReports(data);
     } catch (err) {
-      setError("Unable to load sales reports for this month.");
+      setError("Unable to load sales reports for this week.");
     } finally {
       setLoading(false);
       setHasLoaded(true);
     }
-  }, [monthRange]);
+  }, [weekRange]);
 
   useEffect(() => {
     void load();
@@ -121,38 +119,28 @@ export default function SalesReportsCalendarClient() {
     return map;
   }, [reports]);
 
-  const calendarDays = useMemo(() => {
-    const start = monthRange.start.startOf("week");
-    const end = monthRange.end.endOf("week");
-    const days: Dayjs[] = [];
-    let current = start;
-    while (current.isBefore(end) || current.isSame(end, "day")) {
-      days.push(current);
-      current = current.add(1, "day");
-    }
-    return days;
-  }, [monthRange]);
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, index) => weekRange.start.add(index, "day"));
+  }, [weekRange]);
 
   const totalsSummary = useMemo(() => {
-    const totalDaysInMonth = monthRange.start.daysInMonth();
-    const reportDays = Array.from(reportSummaries.keys()).filter((key) =>
-      dayjs(key).isSame(monthRange.start, "month")
+    const reportDays = weekDays.filter((day) =>
+      reportSummaries.has(day.format("YYYY-MM-DD"))
     );
-    const totalSales = reportDays.reduce((acc, key) => {
-      const summary = reportSummaries.get(key);
+    const totalSales = reportDays.reduce((acc, day) => {
+      const summary = reportSummaries.get(day.format("YYYY-MM-DD"));
       return acc + (summary?.totalSales ?? 0);
     }, 0);
     return {
-      totalDaysInMonth,
       reportDaysCount: reportDays.length,
-      missingDays: Math.max(totalDaysInMonth - reportDays.length, 0),
+      missingDays: Math.max(7 - reportDays.length, 0),
       totalSales
     };
-  }, [monthRange, reportSummaries]);
+  }, [reportSummaries, weekDays]);
 
-  const handleMonthChange = (direction: "prev" | "next") => {
-    setMonth((prev) =>
-      direction === "prev" ? prev.subtract(1, "month") : prev.add(1, "month")
+  const handleWeekChange = (direction: "prev" | "next") => {
+    setWeekStart((prev) =>
+      direction === "prev" ? prev.subtract(1, "week") : prev.add(1, "week")
     );
   };
 
@@ -160,9 +148,9 @@ export default function SalesReportsCalendarClient() {
     <div className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Sales Reports</p>
-        <h2 className="mt-2 font-display text-3xl text-text-primary">Monthly View</h2>
+        <h2 className="mt-2 font-display text-3xl text-text-primary">Weekly View</h2>
         <p className="mt-2 text-sm text-text-muted">
-          Monthly view of daily sales reports, highlighting missing days and totals.
+          Weekly snapshot of sales reports with totals and missing days.
         </p>
       </div>
 
@@ -170,17 +158,17 @@ export default function SalesReportsCalendarClient() {
         <div className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-card px-4 py-2 shadow-soft">
           <button
             type="button"
-            onClick={() => handleMonthChange("prev")}
+            onClick={() => handleWeekChange("prev")}
             className="rounded-full border border-border-subtle px-3 py-1 text-xs text-text-muted hover:text-text-primary"
           >
             Prev
           </button>
           <span className="text-sm font-semibold text-text-primary">
-            {monthRange.start.format("MMMM YYYY")}
+            {weekRange.start.format("MMM D")} - {weekRange.end.format("MMM D, YYYY")}
           </span>
           <button
             type="button"
-            onClick={() => handleMonthChange("next")}
+            onClick={() => handleWeekChange("next")}
             className="rounded-full border border-border-subtle px-3 py-1 text-xs text-text-muted hover:text-text-primary"
           >
             Next
@@ -204,18 +192,14 @@ export default function SalesReportsCalendarClient() {
           <p className="mt-2 text-2xl font-semibold text-text-primary">
             {totalsSummary.reportDaysCount}
           </p>
-          <p className="mt-1 text-xs text-text-muted">
-            Reports submitted this month.
-          </p>
+          <p className="mt-1 text-xs text-text-muted">Reports submitted this week.</p>
         </div>
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
           <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Missing Days</p>
           <p className="mt-2 text-2xl font-semibold text-rose-200">
             {totalsSummary.missingDays}
           </p>
-          <p className="mt-1 text-xs text-text-muted">
-            Days without a report.
-          </p>
+          <p className="mt-1 text-xs text-text-muted">Days without a report.</p>
         </div>
         <div className="rounded-xl bg-surface-card p-5 shadow-card">
           <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Total Sales</p>
@@ -228,85 +212,71 @@ export default function SalesReportsCalendarClient() {
 
       <div className="rounded-xl bg-surface-card p-6 shadow-card">
         {loading && !hasLoaded ? (
-          <LoadingSkeleton lines={8} />
+          <LoadingSkeleton lines={6} />
         ) : error ? (
           <ErrorState
-            title="Calendar unavailable"
+            title="Weekly view unavailable"
             description={error}
             onRetry={load}
           />
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-7 gap-3 text-xs uppercase tracking-[0.2em] text-text-muted">
-              {weekDays.map((day) => (
-                <div key={day} className="px-2 text-center">
-                  {day}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-3">
-              {calendarDays.map((day) => {
-                const isCurrentMonth = day.isSame(monthRange.start, "month");
-                const isToday = day.isSame(dayjs(), "day");
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+              {weekDays.map((day) => {
                 const dateKey = day.format("YYYY-MM-DD");
                 const summary = reportSummaries.get(dateKey);
                 const hasReport = Boolean(summary);
-                const isMissing = isCurrentMonth && !hasReport;
+                const isMissing = !hasReport;
+                const isToday = day.isSame(dayjs(), "day");
 
                 return (
                   <div
                     key={dateKey}
                     className={clsx(
                       "min-h-[120px] rounded-xl border p-3 transition",
-                      isCurrentMonth
-                        ? "border-border-subtle"
-                        : "border-border-subtle/40 opacity-60",
+                      "border-border-subtle",
                       hasReport && "bg-brand-primary/10",
                       isMissing && "bg-rose-500/10"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span
-                        className={clsx(
-                          "text-xs font-semibold",
-                          isCurrentMonth ? "text-text-primary" : "text-text-muted"
-                        )}
-                      >
-                        {day.date()}
-                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-text-primary">
+                          {day.format("ddd")}
+                        </p>
+                        <p className="text-[11px] text-text-muted">{day.format("MMM D")}</p>
+                      </div>
                       {isToday ? (
                         <span className="rounded-full bg-brand-primary/20 px-2 py-0.5 text-[10px] text-brand-primary">
                           Today
                         </span>
                       ) : null}
                     </div>
-                    {isCurrentMonth ? (
-                      hasReport ? (
-                        <div className="mt-3 space-y-1">
-                          <p className="text-[10px] uppercase tracking-[0.2em] text-text-muted">
-                            Total Sales
+                    {hasReport ? (
+                      <div className="mt-3 space-y-1">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-text-muted">
+                          Total Sales
+                        </p>
+                        <p className="text-sm font-semibold text-brand-primary">
+                          AED {formatNumber(summary?.totalSales)}
+                        </p>
+                        {summary && summary.count > 1 ? (
+                          <p className="text-[11px] text-text-muted">
+                            {summary.count} reports
                           </p>
-                          <p className="text-sm font-semibold text-brand-primary">
-                            AED {formatNumber(summary?.totalSales)}
-                          </p>
-                          {summary && summary.count > 1 ? (
-                            <p className="text-[11px] text-text-muted">
-                              {summary.count} reports
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div className="mt-4 text-xs text-rose-200">No report</div>
-                      )
-                    ) : null}
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="mt-4 text-xs text-rose-200">No report</div>
+                    )}
                   </div>
                 );
               })}
             </div>
             {!reports.length ? (
               <EmptyState
-                title="No sales reports in this month"
-                description="Add daily sales reports to populate the calendar."
+                title="No sales reports in this week"
+                description="Add daily sales reports to populate the weekly view."
               />
             ) : null}
           </div>
