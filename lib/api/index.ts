@@ -5,4 +5,5 @@ export { departmentsApi } from "@/lib/api/departments";
 export { tasksApi } from "@/lib/api/tasks";
 export { momsApi } from "@/lib/api/moms";
 export { auditLogsApi } from "@/lib/api/auditLogs";
+export { timelineApi } from "@/lib/api/timeline";
 export { salesReportsApi } from "@/lib/api/salesReports";

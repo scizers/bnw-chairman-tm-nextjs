@@ -13,6 +13,7 @@ import {
   BarChart3,
   UserRound,
   History,
+  Clock,
   type LucideIcon
 } from "lucide-react";
 import clsx from "clsx";
@@ -60,6 +61,7 @@ const navItems: NavItem[] = [
     ]
   },
   { href: "/users", label: "Users", icon: UserRound },
+  { href: "/timeline", label: "Timeline", icon: Clock },
   { href: "/audit-logs", label: "Audit Logs", icon: History },
   { href: "/team", label: "Team", icon: Users },
   { href: "/departments", label: "Departments", icon: Building2 },
@@ -91,7 +93,8 @@ export default function Sidebar() {
     if (canAddUsers === false) {
       return navItems.filter(
         (item) =>
-          !isNavLink(item) || (item.href !== "/users" && item.href !== "/audit-logs")
+          !isNavLink(item) ||
+          (item.href !== "/users" && item.href !== "/audit-logs" && item.href !== "/timeline")
       );
     }
     return navItems;

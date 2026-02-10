@@ -30,6 +30,7 @@ const EXACT_TITLES: Record<string, string> = {
   "/team/new": "New Team Member",
   "/users": "Users",
   "/audit-logs": "Audit Logs",
+  "/timeline": "Timeline",
   "/settings": "Settings",
   "/moms": "MOMs",
   "/moms/new": "New MOM",
@@ -68,10 +69,14 @@ export default function AppShell({ children }: AppShellProps) {
   const isAllowedSalesReportPath = pathname.startsWith("/sales-reports");
   const isUsersPath = pathname.startsWith("/users");
   const isAuditLogsPath = pathname.startsWith("/audit-logs");
+  const isTimelinePath = pathname.startsWith("/timeline");
   const shouldRedirectSalesReport =
     isSalesReport && !isAllowedSalesReportPath && !isAuthRoute;
   const shouldRedirectUsers =
-    !isSalesReport && !canAddUsers && (isUsersPath || isAuditLogsPath) && !isAuthRoute;
+    !isSalesReport &&
+    !canAddUsers &&
+    (isUsersPath || isAuditLogsPath || isTimelinePath) &&
+    !isAuthRoute;
   const shouldRedirect = shouldRedirectSalesReport || shouldRedirectUsers;
 
   useEffect(() => {

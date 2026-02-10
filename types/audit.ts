@@ -14,6 +14,7 @@ export interface AuditLog {
     audioDurationSec?: number;
     taskId?: string;
     taskTitle?: string;
+    meetingDate?: string;
   };
   performedBy?:
     | string
