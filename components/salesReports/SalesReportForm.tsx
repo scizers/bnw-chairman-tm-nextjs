@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button, DatePicker, Form, Input, InputNumber, Select, Table } from "antd";
-import { Trash2 } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import type { TeamMember } from "@/types/team";
@@ -178,6 +178,9 @@ export default function SalesReportForm({
   loading,
   disabled
 }: SalesReportFormProps) {
+  const [draggedHeadIndex, setDraggedHeadIndex] = useState<number | null>(null);
+  const [dragOverHeadIndex, setDragOverHeadIndex] = useState<number | null>(null);
+
   const teamOptions = useMemo(
     () =>
       teamMembers
@@ -216,6 +219,15 @@ export default function SalesReportForm({
 
   const addSalesHead = () => {
     onChange({ ...value, salesHeads: [...value.salesHeads, createSalesHead()] });
+  };
+
+  const moveSalesHead = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    const nextHeads = [...value.salesHeads];
+    const [movedHead] = nextHeads.splice(fromIndex, 1);
+    if (!movedHead) return;
+    nextHeads.splice(toIndex, 0, movedHead);
+    onChange({ ...value, salesHeads: nextHeads });
   };
 
   const updateDirector = (
@@ -444,9 +456,52 @@ export default function SalesReportForm({
           return (
             <div
               key={`sales-head-${headIndex}`}
-              className="rounded-xl border border-border-subtle p-4 space-y-4"
+              className={`rounded-xl border p-4 space-y-4 ${
+                dragOverHeadIndex === headIndex
+                  ? "border-brand-primary/60 bg-brand-primary/5"
+                  : "border-border-subtle"
+              }`}
+              onDragOver={(event) => {
+                if (isLocked) return;
+                if (draggedHeadIndex === null || draggedHeadIndex === headIndex) return;
+                event.preventDefault();
+                if (dragOverHeadIndex !== headIndex) {
+                  setDragOverHeadIndex(headIndex);
+                }
+              }}
+              onDrop={(event) => {
+                if (isLocked) return;
+                event.preventDefault();
+                if (draggedHeadIndex === null) return;
+                moveSalesHead(draggedHeadIndex, headIndex);
+                setDraggedHeadIndex(null);
+                setDragOverHeadIndex(null);
+              }}
+              onDragLeave={() => {
+                if (dragOverHeadIndex === headIndex) {
+                  setDragOverHeadIndex(null);
+                }
+              }}
             >
               <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  aria-label="Drag to reorder sales head"
+                  title="Drag to reorder"
+                  disabled={isLocked || value.salesHeads.length < 2}
+                  draggable={!isLocked && value.salesHeads.length > 1}
+                  onDragStart={() => {
+                    setDraggedHeadIndex(headIndex);
+                    setDragOverHeadIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedHeadIndex(null);
+                    setDragOverHeadIndex(null);
+                  }}
+                  className="mt-5 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border-subtle text-text-muted transition hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <GripVertical size={16} />
+                </button>
                 <div className="min-w-[220px] flex-1">
                   <label className="text-xs uppercase tracking-[0.2em] text-text-muted">
                     Sales Head
