@@ -17,6 +17,11 @@ export interface TeamMemberListMeta {
   total: number;
 }
 
+export interface TeamMemberReportQuery {
+  date?: string;
+  refresh?: boolean;
+}
+
 export const teamMembersApi = {
   list: async () => {
     const { data } = await clientApi.get<TeamMember[]>("/team-members");
@@ -43,6 +48,23 @@ export const teamMembersApi = {
     const { data } = await clientApi.patch<TeamMember>(
       `/team-members/${teamMemberId}`,
       payload
+    );
+    return data;
+  },
+  getReportHtml: async (teamMemberId: string, query?: TeamMemberReportQuery) => {
+    const { data } = await clientApi.get<string>(`/team-members/${teamMemberId}/report`, {
+      params: query,
+      responseType: "text"
+    });
+    return data;
+  },
+  getReportPdf: async (teamMemberId: string, query?: TeamMemberReportQuery) => {
+    const { data } = await clientApi.get<ArrayBuffer>(
+      `/team-members/${teamMemberId}/report.pdf`,
+      {
+        params: query,
+        responseType: "arraybuffer"
+      }
     );
     return data;
   },
