@@ -59,11 +59,11 @@ export const teamMembersApi = {
     return data;
   },
   getReportPdf: async (teamMemberId: string, query?: TeamMemberReportQuery) => {
-    const { data } = await clientApi.get<ArrayBuffer>(
+    const { data } = await clientApi.get<Blob>(
       `/team-members/${teamMemberId}/report.pdf`,
       {
         params: query,
-        responseType: "arraybuffer"
+        responseType: "blob"
       }
     );
     return data;

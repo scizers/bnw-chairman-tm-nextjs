@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Dropdown, message, type MenuProps } from "antd";
+import { message } from "antd";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
@@ -16,8 +16,6 @@ import { resolveTeamMemberId } from "@/lib/utils/task";
 interface AgentProfileClientProps {
   teamMemberId?: string;
 }
-
-type ReportFormat = "html" | "pdf";
 
 export default function AgentProfileClient({ teamMemberId }: AgentProfileClientProps) {
   const router = useRouter();
@@ -34,7 +32,7 @@ export default function AgentProfileClient({ teamMemberId }: AgentProfileClientP
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [reportLoading, setReportLoading] = useState<ReportFormat | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     if (!teamMemberId) return;
@@ -124,43 +122,19 @@ export default function AgentProfileClient({ teamMemberId }: AgentProfileClientP
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
-  const generateReport = async (format: ReportFormat) => {
+  const generateReport = async () => {
     if (!memberId) return;
-    setReportLoading(format);
+    setReportLoading(true);
     try {
       const baseName = `${toSafeFilename(title)}-task-report`;
-      if (format === "html") {
-        const html = await teamMembersApi.getReportHtml(memberId);
-        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        openBlobInTab(blob, `${baseName}.html`);
-      } else {
-        const pdf = await teamMembersApi.getReportPdf(memberId);
-        const blob = new Blob([pdf], { type: "application/pdf" });
-        openBlobInTab(blob, `${baseName}.pdf`);
-      }
+      const pdfBlob = await teamMembersApi.getReportPdf(memberId, { refresh: true });
+      openBlobInTab(pdfBlob, `${baseName}.pdf`);
     } catch (err) {
       message.error("Unable to generate team member report.");
     } finally {
-      setReportLoading(null);
+      setReportLoading(false);
     }
   };
-
-  const reportMenuItems: MenuProps["items"] = [
-    {
-      key: "html",
-      label: "Open HTML Report",
-      onClick: () => {
-        void generateReport("html");
-      }
-    },
-    {
-      key: "pdf",
-      label: "Open PDF Report",
-      onClick: () => {
-        void generateReport("pdf");
-      }
-    }
-  ];
 
   if (loading) {
     return (
@@ -218,20 +192,16 @@ export default function AgentProfileClient({ teamMemberId }: AgentProfileClientP
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Dropdown
-              trigger={["click"]}
-              disabled={!memberId || Boolean(reportLoading)}
-              menu={{ items: reportMenuItems }}
+            <button
+              type="button"
+              onClick={() => {
+                void generateReport();
+              }}
+              disabled={!memberId || reportLoading}
+              className="rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <button
-                type="button"
-                disabled={!memberId || Boolean(reportLoading)}
-                className="inline-flex items-center gap-2 rounded-full border border-border-subtle px-4 py-2 text-xs text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {reportLoading ? "Generating..." : "Generate Report"}
-                <span className="text-[10px]">v</span>
-              </button>
-            </Dropdown>
+              {reportLoading ? "Generating..." : "Generate Report"}
+            </button>
             <button
               type="button"
               onClick={() => {
