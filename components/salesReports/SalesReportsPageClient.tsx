@@ -3,13 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { App, Button, DatePicker, Pagination, Popconfirm, Space, Table, Tooltip } from "antd";
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined
+} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import { salesReportsApi } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
+import { triggerBrowserDownload } from "@/lib/utils/download";
 import type { DailySalesReport, SalesReportGrandTotals } from "@/types/salesReport";
 import type { SalesReportListMeta, SalesReportListQuery } from "@/lib/api/salesReports";
 import dayjs from "dayjs";
@@ -62,6 +69,7 @@ export default function SalesReportsPageClient() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [pagination, setPagination] = useState<SalesReportListMeta | null>(null);
   const [query, setQuery] = useState<SalesReportListQuery>({
     sortBy: "reportDate",
@@ -131,6 +139,20 @@ export default function SalesReportsPageClient() {
       message.error("Failed to delete report.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleExcelExport = async (report: DailySalesReport) => {
+    const reportId = resolveReportId(report);
+    if (!reportId) return;
+    setDownloadingId(reportId);
+    try {
+      const result = await salesReportsApi.downloadExport(reportId, "excel");
+      triggerBrowserDownload(result.blob, result.filename);
+    } catch {
+      message.error("Unable to export Excel file.");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -247,6 +269,17 @@ export default function SalesReportsPageClient() {
                 onClick={(event) => {
                   event.stopPropagation();
                   router.push(`/sales-reports/${reportId}/edit`);
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Export Excel">
+              <Button
+                type="text"
+                icon={<DownloadOutlined />}
+                loading={downloadingId === reportId}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleExcelExport(row);
                 }}
               />
             </Tooltip>

@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { App, Button, Space } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import LoadingSkeleton from "@/components/common/LoadingSkeleton";
 import ErrorState from "@/components/common/ErrorState";
 import { salesReportsApi } from "@/lib/api";
+import { triggerBrowserDownload } from "@/lib/utils/download";
 import type {
   DailySalesReport,
   SalesReportDirector,
@@ -75,9 +78,11 @@ const computeGrandTotals = (report: DailySalesReport): SalesReportDirectorMetric
 };
 
 export default function SalesReportViewClient({ reportId }: SalesReportViewClientProps) {
+  const { message } = App.useApp();
   const [report, setReport] = useState<DailySalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,6 +145,18 @@ export default function SalesReportViewClient({ reportId }: SalesReportViewClien
     return computeGrandTotals(report);
   }, [report]);
 
+  const handleExcelExport = useCallback(async () => {
+    setDownloadingExcel(true);
+    try {
+      const result = await salesReportsApi.downloadExport(reportId, "excel");
+      triggerBrowserDownload(result.blob, result.filename);
+    } catch {
+      message.error("Unable to export Excel file.");
+    } finally {
+      setDownloadingExcel(false);
+    }
+  }, [message, reportId]);
+
   if (loading) {
     return (
       <div className="rounded-xl bg-surface-card p-6 shadow-card">
@@ -160,6 +177,23 @@ export default function SalesReportViewClient({ reportId }: SalesReportViewClien
 
   return (
     <div className="rounded-xl bg-surface-card p-4 shadow-card">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-text-muted">Export</p>
+          <p className="mt-1 text-sm text-text-muted">
+            Download this report in the same tabular layout.
+          </p>
+        </div>
+        <Space wrap>
+          <Button
+            icon={<DownloadOutlined />}
+            loading={downloadingExcel}
+            onClick={() => void handleExcelExport()}
+          >
+            Export Excel
+          </Button>
+        </Space>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead>

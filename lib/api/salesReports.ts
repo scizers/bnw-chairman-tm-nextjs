@@ -23,6 +23,18 @@ type SalesReportPrefill = {
   salesHeads?: DailySalesReport["salesHeads"];
 };
 
+export type SalesReportExportFormat = "excel" | "csv";
+
+const extractFilename = (disposition?: string) => {
+  if (!disposition) return null;
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+  const basicMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+  return basicMatch?.[1] ?? null;
+};
+
 export const salesReportsApi = {
   list: async (params?: SalesReportListQuery) => {
     const { data } = await clientApi.get<{
@@ -38,6 +50,19 @@ export const salesReportsApi = {
   getById: async (reportId: string) => {
     const { data } = await clientApi.get<DailySalesReport>(`/sales-reports/${reportId}`);
     return data;
+  },
+  downloadExport: async (reportId: string, format: SalesReportExportFormat = "excel") => {
+    const response = await clientApi.get<Blob>(`/sales-reports/${reportId}/export`, {
+      params: { format },
+      responseType: "blob"
+    });
+    const disposition = response.headers?.["content-disposition"];
+    return {
+      blob: response.data,
+      filename:
+        extractFilename(disposition) ??
+        `sales-update.${format === "csv" ? "csv" : "xls"}`
+    };
   },
   create: async (payload: Partial<DailySalesReport>) => {
     const { data } = await clientApi.post<DailySalesReport>("/sales-reports", payload);
